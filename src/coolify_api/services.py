@@ -28,10 +28,10 @@ import asyncio
 from logging import getLogger, DEBUG
 from typing import Optional, Any
 
-import coolify_api.utils as utils
-from coolify_api._logging import _log_message
-from coolify_api.url_utils import get, post, patch, delete
-from coolify_api.services_environment import CoolifyServicesEnvVars
+import _utils as utils
+from ._logging import _log_message
+from .url_utils import get, post, patch, delete
+from .services_environment import CoolifyServicesEnvVars
 
 
 class CoolifyServices:
