@@ -26,16 +26,16 @@
 import os
 import logging
 
-from coolify_api.applications import CoolifyApplications
-from coolify_api.databases import CoolifyDatabases
-from coolify_api.deployments import CoolifyDeployments
-from coolify_api.operations import CoolifyOperations
-from coolify_api.private_keys import CoolifyPrivateKeys
-from coolify_api.projects import CoolifyProjects
-from coolify_api.resources import CoolifyResources
-from coolify_api.servers import CoolifyServers
-from coolify_api.services import CoolifyServices
-from coolify_api.teams import CoolifyTeams
+from .applications import CoolifyApplications
+from .databases import CoolifyDatabases
+from .deployments import CoolifyDeployments
+from .operations import CoolifyOperations
+from .private_keys import CoolifyPrivateKeys
+from .projects import CoolifyProjects
+from .resources import CoolifyResources
+from .servers import CoolifyServers
+from .services import CoolifyServices
+from .teams import CoolifyTeams
 
 
 class CoolifyAPIClient:

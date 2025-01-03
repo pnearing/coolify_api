@@ -25,5 +25,5 @@
 from typing import Optional
 
 
-from coolify_api.api_client import CoolifyAPIClient
+from .api_client import CoolifyAPIClient
 

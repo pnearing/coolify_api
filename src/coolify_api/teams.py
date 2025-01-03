@@ -28,8 +28,8 @@ import asyncio
 from logging import getLogger, DEBUG
 from typing import Any
 
-from coolify_api._logging import _log_message
-from coolify_api.url_utils import get
+from _logging import _log_message
+from url_utils import get
 
 
 class CoolifyTeams:

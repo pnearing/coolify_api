@@ -30,7 +30,7 @@ from datetime import timedelta
 from typing import Any, NoReturn, Optional
 import time
 import requests
-from requests.models import Response
+from requests.models import Response, Request
 import logging
 
 from coolify_api._logging import OUTPUT_IS_SHY
@@ -51,9 +51,11 @@ def _build_v1_url(base_url, endpoint):
 
 
 @staticmethod
-def _handle_response(data: Optional[Any], response: Response) -> Any | NoReturn:
+def _handle_response(headers: dict, data: Optional[Any], response: Response) -> Any | NoReturn:
+
     status_code = response.status_code
     url = response.url
+
     if 200 <= response.status_code < 300:
         LOGGER.info("Coolify Api URL: '%s', responded with Status Code: '%i'", url, status_code)
         return response.json()
@@ -62,12 +64,9 @@ def _handle_response(data: Optional[Any], response: Response) -> Any | NoReturn:
         try:
             return response.json()
         except ValueError:
-            if not OUTPUT_IS_SHY:
-                message = (f"Coolify Api URL: '{url}', responded with Status Code: '{status_code}',"
-                           f" and the following JSON data was returned: \n{response.text}")
-                LOGGER.warning(message)
             return response.text
     if 400 <= response.status_code < 500:
+        LOGGER.error("Coolify Api URL: '%s', responded with Status Code: '%i'", url, status_code)
         if response.status_code == 401:
             raise CoolifyAuthenticationError(url=url, headers=headers, data=data, response=response)
         if response.status_code == 422:
@@ -75,6 +74,7 @@ def _handle_response(data: Optional[Any], response: Response) -> Any | NoReturn:
         # Default Error:
         raise CoolifyAPIResponseError(url=url, headers=headers, data=data, response=response)
     if response.status_code >= 500:
+        LOGGER.error("Coolify Api URL: '%s', responded with Status Code: '%i'", url, status_code)
         raise CoolifyAPIError(url=url, headers=headers, data=data, response=response)
 
 
@@ -109,7 +109,7 @@ async def _get(url: str,
         LOGGER.error("Error sending GET request to %s", url)
         raise RequestsError(url, headers=headers, data=None, exception=e) from e
     LOGGER.debug("Finished GET request to %s", url)
-    return _handle_response(data=None, response=response)
+    return _handle_response(headers=headers, data=None, response=response)
 
 
 @staticmethod
@@ -146,7 +146,7 @@ async def _post(url: str,
         LOGGER.error("Error sending POST request to %s", url)
         raise RequestsError(url, headers=headers, data=data, exception=e) from e
     LOGGER.debug("Finished POST request to %s", url)
-    return _handle_response(url=url, headers=headers, data=data, response=response)
+    return _handle_response(headers=headers, data=data, response=response)
 
 
 @staticmethod
@@ -185,7 +185,7 @@ async def _patch(url: str,
         LOGGER.error("Error sending PATCH request to %s", url)
         raise RequestsError(url, headers=headers, data=data, exception=e) from e
     LOGGER.debug("Finished PATCH request to %s", url)
-    return _handle_response(url=url, headers=headers, data=data, response=response)
+    return _handle_response(headers=headers, data=data, response=response)
 
 
 @staticmethod
@@ -219,7 +219,7 @@ async def _delete(url: str,
         LOGGER.error("Error sending DELETE request to %s", url)
         raise RequestsError(url, headers=headers, data=None, exception=e) from e
     LOGGER.debug("Finished DELETE request to %s", url)
-    return _handle_response(url=url, headers=headers, data=None, response=response)
+    return _handle_response(headers=headers, data=None, response=response)
 
 
 @staticmethod

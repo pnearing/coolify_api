@@ -3,7 +3,7 @@ import os
 from typing import Optional, Any
 from requests.models import Response
 
-from coolify_api._logging import OUTPUT_IS_SHY
+from ._logging import OUTPUT_IS_SHY
 
 
 class CoolifyAPIError(Exception):
