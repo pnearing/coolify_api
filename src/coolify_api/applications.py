@@ -49,7 +49,7 @@ from ._utils import create_data_with_kwargs
 from ._logging import _log_message
 from ._http_utils import HTTPUtils
 from .applications_create import CoolifyApplicationCreate
-from .environment import CoolifyEnvironment
+from .environments import CoolifyEnvironment
 from .control import CoolifyResourceControl
 
 class CoolifyApplications:

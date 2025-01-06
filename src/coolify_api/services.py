@@ -49,7 +49,7 @@ from typing import Any, Coroutine, Dict, List
 from ._utils import create_data_with_kwargs
 from ._logging import _log_message
 from ._http_utils import HTTPUtils
-from .environment import CoolifyEnvironment
+from .environments import CoolifyEnvironment
 from .control import CoolifyResourceControl
 
 
