@@ -39,6 +39,7 @@ from ._utils import create_data_with_kwargs
 from ._http_utils import HTTPUtils
 from ._logging import _log_message
 from .databases_create import CoolifyDatabasesCreate
+from .control import CoolifyResourceControl
 
 
 class CoolifyDatabases:
@@ -59,6 +60,7 @@ class CoolifyDatabases:
         """
         self._http_utils = http_utils
         self.create = CoolifyDatabasesCreate(http_utils)
+        self._control = CoolifyResourceControl(http_utils, "databases")
         self._logger = getLogger(__name__)
 
     def list_all(self) -> List[Dict[str, Any]] | Coroutine[Any, Any, List[Dict[str, Any]]]:
@@ -186,12 +188,7 @@ class CoolifyDatabases:
             CoolifyAuthenticationError: If authentication fails
             CoolifyNotFoundError: If database UUID not found
         """
-        message = f"Start to start database with uuid: {database_uuid}"
-        _log_message(self._logger, DEBUG, message)
-        results = self._http_utils.get(f"databases/{database_uuid}/start")
-        message = f"Finish starting database with uuid: {database_uuid}"
-        _log_message(self._logger, DEBUG, message, results)
-        return results
+        return self._control.start(database_uuid)
 
     def stop(self, database_uuid: str) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
         """Stop a database.
@@ -208,12 +205,7 @@ class CoolifyDatabases:
             CoolifyAuthenticationError: If authentication fails
             CoolifyNotFoundError: If database UUID not found
         """
-        message = f"Start to stop database with uuid: {database_uuid}"
-        _log_message(self._logger, DEBUG, message)
-        results = self._http_utils.get(f"databases/{database_uuid}/stop")
-        message = f"Finish stopping database with uuid: {database_uuid}"
-        _log_message(self._logger, DEBUG, message, results)
-        return results
+        return self._control.stop(database_uuid)
 
     def restart(self, database_uuid: str) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
         """Restart a database.
@@ -230,9 +222,4 @@ class CoolifyDatabases:
             CoolifyAuthenticationError: If authentication fails
             CoolifyNotFoundError: If database UUID not found
         """
-        message = f"Start to restart database with uuid: {database_uuid}"
-        _log_message(self._logger, DEBUG, message)
-        results = self._http_utils.get(f"databases/{database_uuid}/restart")
-        message = f"Finish restarting database with uuid: {database_uuid}"
-        _log_message(self._logger, DEBUG, message, results)
-        return results
+        return self._control.restart(database_uuid)

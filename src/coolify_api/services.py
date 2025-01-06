@@ -50,6 +50,7 @@ from ._utils import create_data_with_kwargs
 from ._logging import _log_message
 from ._http_utils import HTTPUtils
 from .environment import CoolifyEnvironment
+from .control import CoolifyResourceControl
 
 
 class CoolifyServices:
@@ -71,6 +72,7 @@ class CoolifyServices:
         self._http_utils: HTTPUtils = http_utils
         self._logger = getLogger(__name__)
         self.environment = CoolifyEnvironment(http_utils, "services")
+        self._control = CoolifyResourceControl(http_utils, "services")
 
     def list_all(self) -> List[Dict[str, Any]] | Coroutine[Any, Any, List[Dict[str, Any]]]:
         """List all services.
@@ -250,7 +252,7 @@ class CoolifyServices:
         """
         message = f"Start to start service with id: {service_uuid}"
         _log_message(self._logger, DEBUG, message)
-        results = self._http_utils.get(f"services/{service_uuid}/start")
+        results = self._control.start(service_uuid)
         message = f"Finish starting service with id: {service_uuid}"
         _log_message(self._logger, DEBUG, message, results)
         return results
@@ -272,7 +274,7 @@ class CoolifyServices:
         """
         message = f"Start to stop service with id: {service_uuid}"
         _log_message(self._logger, DEBUG, message)
-        results = self._http_utils.get(f"services/{service_uuid}/stop")
+        results = self._control.stop(service_uuid)
         message = f"Finish stopping service with id: {service_uuid}"
         _log_message(self._logger, DEBUG, message, results)
         return results
@@ -294,7 +296,7 @@ class CoolifyServices:
         """
         message = f"Start to restart service with id: {service_uuid}"
         _log_message(self._logger, DEBUG, message)
-        results = self._http_utils.get(f"services/{service_uuid}/restart")
+        results = self._control.restart(service_uuid)
         message = f"Finish restarting service with id: {service_uuid}"
         _log_message(self._logger, DEBUG, message, results)
         return results

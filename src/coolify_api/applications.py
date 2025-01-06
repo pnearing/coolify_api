@@ -50,6 +50,7 @@ from ._logging import _log_message
 from ._http_utils import HTTPUtils
 from .applications_create import CoolifyApplicationCreate
 from .environment import CoolifyEnvironment
+from .control import CoolifyResourceControl
 
 class CoolifyApplications:
     """Manages Coolify applications.
@@ -71,6 +72,7 @@ class CoolifyApplications:
         self._http_utils = http_utils
         self.create = CoolifyApplicationCreate(http_utils)
         self.environment = CoolifyEnvironment(http_utils, "applications")
+        self._control = CoolifyResourceControl(http_utils, "applications")
         self._logger = getLogger(__name__)
 
     def list_all(self) -> List[Dict[str, Any]] | Coroutine[Any, Any, List[Dict[str, Any]]]:
@@ -120,7 +122,8 @@ class CoolifyApplications:
 
     def delete(self, application_uuid: str, delete_configurations: bool = True,
                delete_volumes: bool = True, docker_cleanup: bool = True,
-               delete_connected_networks: bool = True) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
+               delete_connected_networks: bool = True
+               ) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
         """Delete an application.
 
         Args:
@@ -194,13 +197,7 @@ class CoolifyApplications:
             CoolifyError: For general API errors
             CoolifyAuthenticationError: If authentication fails
         """
-        message = f"Start queueing application start for application with uuid: {application_uuid}"
-        _log_message(self._logger, DEBUG, message)
-        params = {"force": force, "instant_deploy": instant_deploy}
-        results = self._http_utils.get(f"applications/{application_uuid}/start", params=params)
-        message = f"Finish queueing application start for application with uuid: {application_uuid}"
-        _log_message(self._logger, DEBUG, message, results)
-        return results
+        return self._control.start(application_uuid, force=force, instant_deploy=instant_deploy)
 
     def stop(self, application_uuid: str) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
         """Stop an application.
@@ -216,12 +213,7 @@ class CoolifyApplications:
             CoolifyError: For general API errors
             CoolifyAuthenticationError: If authentication fails
         """
-        message = f"Start queueing application stop for application with uuid: {application_uuid}"
-        _log_message(self._logger, DEBUG, message)
-        results = self._http_utils.get(f"applications/{application_uuid}/stop")
-        message = f"Finish queueing application stop for application with uuid: {application_uuid}"
-        _log_message(self._logger, DEBUG, message, results)
-        return results
+        return self._control.stop(application_uuid)
 
     def restart(self, application_uuid: str) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
         """Restart an application.
@@ -238,12 +230,7 @@ class CoolifyApplications:
             CoolifyError: For general API errors
             CoolifyAuthenticationError: If authentication fails
         """
-        message = f"Start queueing application restart for application with uuid: {application_uuid}"
-        _log_message(self._logger, DEBUG, message)
-        results = self._http_utils.get(f"applications/{application_uuid}/restart")
-        message = f"Finish queueing application restart for application with uuid: {application_uuid}"
-        _log_message(self._logger, DEBUG, message, results)
-        return results
+        return self._control.restart(application_uuid)
 
     def execute_command(self, application_uuid: str, command: str
                        ) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
