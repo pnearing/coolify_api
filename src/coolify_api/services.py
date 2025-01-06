@@ -1,172 +1,300 @@
-#   Copyright (c) 2024.
-#  #
-#   Proprietary License
-#  #
-#   management-tool License Agreement
-#  #
-#   Permission is hereby granted, to any person contracted with Rapid Dev Group to
-#   use this software and associated documentation files (the "Software"), to use
-#   the Software for personal and commercial purposes, subject to the following
-#   conditions:
-#  #
-#   1. Redistribution and use in source and binary forms, with or without
-#      modification, are not permitted.
-#   2. The Software shall be used for Good, not Evil.
-#  #
-#   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-#   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-#   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-#   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-#   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-#   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-#   SOFTWARE.
-#  #
-#   Contact: pn@goldeverywhere.com
-#
-"""coolify_api/services.py"""
-import asyncio
-from logging import getLogger, DEBUG
-from typing import Optional, Any
+"""Coolify Services API client.
 
-import _utils as utils
+This module provides methods to manage Coolify services, including:
+- Listing all services
+- Getting service details
+- Creating new services
+- Updating existing services
+- Deleting services
+- Managing service lifecycle (start/stop/restart)
+- Managing service environment variables
+
+Example:
+    ```python
+    from coolify_api import CoolifyAPIClient
+
+    client = CoolifyAPIClient()
+
+    # List all services
+    services = client.services.list_all()
+
+    # Create a new service
+    new_service = client.services.create(
+        service_type="redis",
+        name="Redis Cache",
+        project_uuid="project-123",
+        environment_name="production",
+        server_uuid="server-456"
+    )
+
+    # Get service details
+    service = client.services.get("service-uuid")
+
+    # Manage service lifecycle
+    client.services.start("service-uuid")
+    client.services.stop("service-uuid")
+    client.services.restart("service-uuid")
+
+    # Manage environment variables
+    client.services.environment.create("service-uuid", {
+        "key": "REDIS_PASSWORD",
+        "value": "secret"
+    })
+    ```
+"""
+
+from logging import getLogger, DEBUG
+from typing import Any, Coroutine, Dict, List
+
+from ._utils import create_data_with_kwargs
 from ._logging import _log_message
-from .url_utils import get, post, patch, delete
-from .services_environment import CoolifyServicesEnvVars
+from ._http_utils import HTTPUtils
+from .environment import CoolifyEnvironment
 
 
 class CoolifyServices:
+    """Manages Coolify services.
 
-    def __init__(self, base_url: str, headers: dict) -> None:
-        self._base_url = base_url
-        """The base url for the Coolify API."""
-        self._headers = headers
-        """The headers for the Coolify API, contain auth data."""
+    This class provides methods to interact with services in Coolify, including
+    lifecycle management and configuration.
+
+    Attributes:
+        environment: Environment variable management for services
+    """
+
+    def __init__(self, http_utils: HTTPUtils) -> None:
+        """Initialize the services manager.
+
+        Args:
+            http_utils: HTTP client for making API requests
+        """
+        self._http_utils: HTTPUtils = http_utils
         self._logger = getLogger(__name__)
-        """The logger for the Coolify API."""
-        self.environment: CoolifyServicesEnvVars = CoolifyServicesEnvVars(self._base_url, self._headers)
-        """The environment for the services."""
+        self.environment = CoolifyEnvironment(http_utils, "services")
 
-    # LIST:
-    async def _list_all(self) -> list[dict[str, Any]]:
-        _log_message(self._logger, DEBUG, "Start to list all services")
-        endpoint = "services"
-        results = get(self._base_url, endpoint, self._headers)
-        _log_message(self._logger, DEBUG, "Finish listing all services")
+    def list_all(self) -> List[Dict[str, Any]] | Coroutine[Any, Any, List[Dict[str, Any]]]:
+        """List all services.
+
+        Returns:
+            List of service objects containing:
+            - id (int): Internal service ID
+            - uuid (str): Service UUID
+            - name (str): Service name
+            - description (str): Service description
+            - environment_id (int): Environment ID
+            - server_id (int): Server ID
+            - service_type (str): Type of service
+            - created_at (str): Creation timestamp
+            - updated_at (str): Last update timestamp
+
+        Raises:
+            CoolifyError: For general API errors
+            CoolifyAuthenticationError: If authentication fails
+        """
+        message = "Start to list all services"
+        _log_message(self._logger, DEBUG, message)
+        results = self._http_utils.get("services")
+        message = "Finish listing all services"
+        _log_message(self._logger, DEBUG, message, results)
         return results
 
-    def list_all(self) -> list[dict[str, Any]]:
-        try:
-            _ = asyncio.get_running_loop()
-            return self._list_all()
-        except RuntimeError:
-            return asyncio.run(self._list_all())
+    def get(self, service_uuid: str) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
+        """Get service details by UUID.
 
-    # GET:
-    async def _get(self, service_uuid: str) -> dict[str, Any]:
-        _log_message(self._logger, DEBUG, f"Start to get service with id: {service_uuid}")
-        endpoint = f"services/{service_uuid}"
-        results = get(self._base_url, endpoint, self._headers)
-        _log_message(self._logger, DEBUG, f"Finish getting service with id: {service_uuid}")
+        Args:
+            service_uuid: UUID of the service to retrieve
+
+        Returns:
+            Service object containing:
+            - id (int): Internal service ID
+            - uuid (str): Service UUID
+            - name (str): Service name
+            - description (str): Service description
+            - environment_id (int): Environment ID
+            - server_id (int): Server ID
+            - service_type (str): Type of service
+            - created_at (str): Creation timestamp
+            - updated_at (str): Last update timestamp
+
+        Raises:
+            CoolifyError: For general API errors
+            CoolifyAuthenticationError: If authentication fails
+            CoolifyNotFoundError: If service UUID not found
+        """
+        message = f"Start to get service with id: {service_uuid}"
+        _log_message(self._logger, DEBUG, message)
+        results = self._http_utils.get(f"services/{service_uuid}")
+        message = f"Finish getting service with id: {service_uuid}"
+        _log_message(self._logger, DEBUG, message, results)
         return results
 
-    def get(self, service_uuid: str) -> dict[str, Any]:
-        try:
-            _ = asyncio.get_running_loop()
-            return self._get(service_uuid)
-        except RuntimeError:
-            return asyncio.run(self._get(service_uuid))
+    def create(self, service_type: str, name: str, project_uuid: str, environment_name: str,
+               server_uuid: str, data: Dict[str, Any] = None, **kwargs
+               ) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
+        """Create a new service.
 
-    # CREATE:
-    async def _create(self, data: dict[str, Any]) -> dict[str, Any]:
-        _log_message(self._logger, DEBUG, f"Start to create a new service")
-        endpoint = "services"
-        results = post(self._base_url, endpoint, self._headers, data=data)
-        _log_message(self._logger, DEBUG, f"Finish creating a new service")
+        Args:
+            service_type: Service type (e.g., redis, mysql, etc.)
+            name: Name of the service
+            project_uuid: Project UUID
+            environment_name: Environment name
+            server_uuid: Server UUID
+            data: Additional service configuration containing:
+                - description (str): Service description
+                - destination_uuid (str): Destination UUID (required for multi-destination servers)
+                - instant_deploy (bool): Start service immediately
+            **kwargs: Additional configuration options
+
+        Returns:
+            Dictionary containing:
+            - uuid (str): Service UUID
+            - domains (List[str]): Service domains
+
+        Raises:
+            CoolifyError: For general API errors
+            CoolifyAuthenticationError: If authentication fails
+            CoolifyValidationError: If validation fails
+        """
+        base_data = {
+            "type": service_type,
+            "name": name,
+            "project_uuid": project_uuid,
+            "environment_name": environment_name,
+            "server_uuid": server_uuid
+        }
+        data = create_data_with_kwargs(data or {}, **base_data, **kwargs)
+        message = "Start to create a new service"
+        _log_message(self._logger, DEBUG, message, data)
+        results = self._http_utils.post("services", data=data)
+        message = "Finish creating a new service"
+        _log_message(self._logger, DEBUG, message, results)
         return results
 
-    def create(self, data: Optional[dict[str, Any]] = None, **kwargs) -> dict[str, Any]:
-        real_data = utils.create_data_with_kwargs(data, **kwargs)
-        try:
-            _ = asyncio.get_running_loop()
-            return self._create(real_data)
-        except RuntimeError:
-            return asyncio.run(self._create(real_data))
+    def update(self, service_uuid: str, data: Dict[str, Any], **kwargs
+               ) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
+        """Update a service.
 
-    # UPDATE:
-    async def _update(self, service_uuid: str, data: dict[str, Any]) -> dict[str, Any]:
-        _log_message(self._logger, DEBUG, f"Start to update service with id: {service_uuid}")
-        endpoint = f"services/{service_uuid}"
-        results = patch(self._base_url, endpoint, self._headers, data=data)
-        _log_message(self._logger, DEBUG, f"Finish updating service with id: {service_uuid}")
+        Args:
+            service_uuid: UUID of the service to update
+            data: Updated service configuration (same fields as create)
+            **kwargs: Additional configuration options
+
+        Returns:
+            Dictionary containing:
+            - uuid (str): Service UUID
+            - domains (List[str]): Updated service domains
+
+        Raises:
+            CoolifyError: For general API errors
+            CoolifyAuthenticationError: If authentication fails
+            CoolifyNotFoundError: If service UUID not found
+            CoolifyValidationError: If validation fails
+        """
+        data = create_data_with_kwargs(data, **kwargs)
+        message = f"Start to update service with id: {service_uuid}"
+        _log_message(self._logger, DEBUG, message, data)
+        results = self._http_utils.patch(f"services/{service_uuid}", data=data)
+        message = f"Finish updating service with id: {service_uuid}"
+        _log_message(self._logger, DEBUG, message, results)
         return results
 
-    def update(self, service_uuid: str, data: Optional[dict[str, Any]], **kwargs) -> dict[str, Any]:
-        real_data = utils.create_data_with_kwargs(data, **kwargs)
-        try:
-            _ = asyncio.get_running_loop()
-            return self._update(service_uuid, real_data)
-        except RuntimeError:
-            return asyncio.run(self._update(service_uuid, real_data))
+    def delete(self, service_uuid: str, delete_configurations: bool = True,
+               delete_volumes: bool = True, docker_cleanup: bool = True,
+               delete_connected_networks: bool = True
+               ) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
+        """Delete a service.
 
-    # DELETE:
-    async def _delete(self, service_uuid: str) -> dict[str, Any]:
-        _log_message(self._logger, DEBUG, f"Start to delete service with id: {service_uuid}")
-        endpoint = f"services/{service_uuid}"
-        results = delete(self._base_url, endpoint, self._headers)
-        _log_message(self._logger, DEBUG, f"Finish deleting service with id: {service_uuid}")
+        Args:
+            service_uuid: UUID of the service to delete
+            delete_configurations: Whether to delete configurations
+            delete_volumes: Whether to delete volumes
+            docker_cleanup: Whether to run docker cleanup
+            delete_connected_networks: Whether to delete connected networks
+
+        Returns:
+            Dictionary containing:
+            - message (str): "Service deletion request queued."
+
+        Raises:
+            CoolifyError: For general API errors
+            CoolifyAuthenticationError: If authentication fails
+            CoolifyNotFoundError: If service UUID not found
+        """
+        message = f"Start to delete service with id: {service_uuid}"
+        _log_message(self._logger, DEBUG, message)
+        params = {
+            "delete_configurations": delete_configurations,
+            "delete_volumes": delete_volumes,
+            "docker_cleanup": docker_cleanup,
+            "delete_connected_networks": delete_connected_networks
+        }
+        results = self._http_utils.delete(f"services/{service_uuid}", params=params)
+        message = f"Finish deleting service with id: {service_uuid}"
+        _log_message(self._logger, DEBUG, message, results)
         return results
 
-    def delete(self, service_uuid: str) -> dict[str, Any]:
-        try:
-            _ = asyncio.get_running_loop()
-            return self._delete(service_uuid)
-        except RuntimeError:
-            return asyncio.run(self._delete(service_uuid))
+    def start(self, service_uuid: str) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
+        """Start a service.
 
-    # START:
-    async def _start(self, service_uuid: str) -> dict[str, Any]:
-        _log_message(self._logger, DEBUG, f"Starting service with service_id: {service_uuid}")
-        endpoint = f"services/{service_uuid}/start"
-        results = get(self._base_url, endpoint, self._headers)
-        _log_message(self._logger, DEBUG,
-                     f"Finish starting service with service_id: {service_uuid}")
+        Args:
+            service_uuid: UUID of the service to start
+
+        Returns:
+            Dictionary containing:
+            - message (str): "Service starting request queued."
+
+        Raises:
+            CoolifyError: For general API errors
+            CoolifyAuthenticationError: If authentication fails
+            CoolifyNotFoundError: If service UUID not found
+        """
+        message = f"Start to start service with id: {service_uuid}"
+        _log_message(self._logger, DEBUG, message)
+        results = self._http_utils.get(f"services/{service_uuid}/start")
+        message = f"Finish starting service with id: {service_uuid}"
+        _log_message(self._logger, DEBUG, message, results)
         return results
 
-    def start(self, service_uuid: str) -> dict[str, Any]:
-        try:
-            _ = asyncio.get_running_loop()
-            return self._start(service_uuid)
-        except RuntimeError:
-            return asyncio.run(self._start(service_uuid))
+    def stop(self, service_uuid: str) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
+        """Stop a service.
 
-    # STOP:
-    async def _stop(self, service_uuid: str) -> dict[str, Any]:
-        _log_message(self._logger, DEBUG, f"Stopping service with service_id: {service_uuid}")
-        endpoint = f"services/{service_uuid}/stop"
-        results = get(self._base_url, endpoint, self._headers)
-        _log_message(self._logger, DEBUG,
-                     f"Finish stopping service with service_id: {service_uuid}")
+        Args:
+            service_uuid: UUID of the service to stop
+
+        Returns:
+            Dictionary containing:
+            - message (str): "Service stopping request queued."
+
+        Raises:
+            CoolifyError: For general API errors
+            CoolifyAuthenticationError: If authentication fails
+            CoolifyNotFoundError: If service UUID not found
+        """
+        message = f"Start to stop service with id: {service_uuid}"
+        _log_message(self._logger, DEBUG, message)
+        results = self._http_utils.get(f"services/{service_uuid}/stop")
+        message = f"Finish stopping service with id: {service_uuid}"
+        _log_message(self._logger, DEBUG, message, results)
         return results
 
-    def stop(self, service_uuid: str) -> dict[str, Any]:
-        try:
-            _ = asyncio.get_running_loop()
-            return self._stop(service_uuid)
-        except RuntimeError:
-            return asyncio.run(self._stop(service_uuid))
+    def restart(self, service_uuid: str) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
+        """Restart a service.
 
-    # RESTART:
-    async def _restart(self, service_uuid: str) -> dict[str, Any]:
-        _log_message(self._logger, DEBUG, f"Restarting service with service_id: {service_uuid}")
-        endpoint = f"services/{service_uuid}/restart"
-        results = get(self._base_url, endpoint, self._headers)
-        _log_message(self._logger, DEBUG,
-                     f"Finish restarting service with service_id: {service_uuid}")
+        Args:
+            service_uuid: UUID of the service to restart
+
+        Returns:
+            Dictionary containing:
+            - message (str): "Service restarting request queued."
+
+        Raises:
+            CoolifyError: For general API errors
+            CoolifyAuthenticationError: If authentication fails
+            CoolifyNotFoundError: If service UUID not found
+        """
+        message = f"Start to restart service with id: {service_uuid}"
+        _log_message(self._logger, DEBUG, message)
+        results = self._http_utils.get(f"services/{service_uuid}/restart")
+        message = f"Finish restarting service with id: {service_uuid}"
+        _log_message(self._logger, DEBUG, message, results)
         return results
-
-    def restart(self, service_uuid: str) -> dict[str, Any]:
-        try:
-            _ = asyncio.get_running_loop()
-            return self._restart(service_uuid)
-        except RuntimeError:
-            return asyncio.run(self._restart(service_uuid))

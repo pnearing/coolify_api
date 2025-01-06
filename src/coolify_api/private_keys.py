@@ -1,121 +1,186 @@
-"""File: coolify_api/private_keys.py"""
-#   Copyright (c) 2024.
-#  #
-#   Proprietary License
-#  #
-#   management-tool License Agreement
-#  #
-#   Permission is hereby granted, to any person contracted with Rapid Dev Group to
-#   use this software and associated documentation files (the "Software"), to use
-#   the Software for personal and commercial purposes, subject to the following
-#   conditions:
-#  #
-#   1. Redistribution and use in source and binary forms, with or without
-#      modification, are not permitted.
-#   2. The Software shall be used for Good, not Evil.
-#  #
-#   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-#   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-#   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-#   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-#   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-#   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-#   SOFTWARE.
-#  #
-#   Contact: pn@goldeverywhere.com
-#
-import asyncio
-from logging import getLogger, DEBUG
-from typing import Optional, Any
+"""Coolify Private Keys API client.
 
-import _utils
+This module provides methods to manage SSH private keys in Coolify, including:
+- Listing all private keys
+- Getting key details
+- Creating new keys
+- Updating existing keys
+- Deleting keys
+
+Example:
+    ```python
+    from coolify_api import CoolifyAPIClient
+
+    client = CoolifyAPIClient()
+
+    # List all private keys
+    keys = client.private_keys.list_all()
+
+    # Create a new key
+    new_key = client.private_keys.create({
+        "name": "Deploy Key",
+        "description": "Key for deployments",
+        "private_key": "-----BEGIN RSA PRIVATE KEY-----\n..."
+    })
+
+    # Update a key
+    client.private_keys.update("key-uuid", {
+        "name": "Updated Name",
+        "description": "Updated description"
+    })
+
+    # Delete a key
+    client.private_keys.delete("key-uuid")
+    ```
+"""
+
+from logging import getLogger, DEBUG
+from typing import Any, Coroutine, Dict, List
+
+from ._utils import create_data_with_kwargs
 from ._logging import _log_message
-from .url_utils import get, post, patch, delete
+from ._http_utils import HTTPUtils
 
 
 class CoolifyPrivateKeys:
-    def __init__(self, base_url: str, headers: dict) -> None:
-        self._base_url = base_url
-        self._headers = headers
+    """Manages SSH private keys in Coolify.
+
+    This class provides methods to interact with private keys used for Git authentication
+    and other secure operations.
+    """
+
+    def __init__(self, http_utils: HTTPUtils) -> None:
+        """Initialize the private keys manager.
+
+        Args:
+            http_utils: HTTP client for making API requests
+        """
+        self._http_utils = http_utils
         self._logger = getLogger(__name__)
 
-    # LIST:
-    async def _list_all(self) -> list[dict[str, Any]]:
-        _log_message(self._logger, DEBUG, "Start to list all private keys")
-        endpoint = "security/keys"
-        results = get(self._base_url, endpoint, self._headers)
-        _log_message(self._logger, DEBUG, "Finish listing all private keys")
+    def list_all(self) -> List[Dict[str, Any]] | Coroutine[Any, Any, List[Dict[str, Any]]]:
+        """List all private keys.
+
+        Returns:
+            List of private key objects containing:
+            - id (int): Internal key ID
+            - uuid (str): Key UUID
+            - name (str): Key name
+            - description (str): Key description
+            - private_key (str): The private key content
+            - is_git_related (bool): Whether key is used for Git
+            - team_id (int): Team ID
+            - created_at (str): Creation timestamp
+            - updated_at (str): Last update timestamp
+
+        Raises:
+            CoolifyError: For general API errors
+            CoolifyAuthenticationError: If authentication fails
+        """
+        message = "Start to list all private keys"
+        _log_message(self._logger, DEBUG, message)
+        results = self._http_utils.get("security/keys")
+        message = "Finish listing all private keys"
+        _log_message(self._logger, DEBUG, message, results)
         return results
 
-    def list_all(self) -> list[dict[str, Any]]:
-        try:
-            _ = asyncio.get_running_loop()
-            return self._list_all()
-        except RuntimeError:
-            return asyncio.run(self._list_all())
+    def get(self, key_uuid: str) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
+        """Get private key details by UUID.
 
-    #############
-    # GET:
-    async def _get(self, key_uuid: str) -> dict[str, Any]:
-        _log_message(self._logger, DEBUG, f"Start to get private key with id: {key_uuid}")
-        endpoint = f"security/keys/{key_uuid}"
-        results = get(self._base_url, endpoint, self._headers)
-        _log_message(self._logger, DEBUG, f"Finish getting private key with id: {key_uuid}")
+        Args:
+            key_uuid: UUID of the private key to retrieve
+
+        Returns:
+            Private key object containing full details (same structure as list_all)
+
+        Raises:
+            CoolifyError: For general API errors
+            CoolifyAuthenticationError: If authentication fails
+            CoolifyNotFoundError: If key UUID not found
+        """
+        message = f"Start to get private key with uuid: {key_uuid}"
+        _log_message(self._logger, DEBUG, message)
+        results = self._http_utils.get(f"security/keys/{key_uuid}")
+        message = f"Finish getting private key with uuid: {key_uuid}"
+        _log_message(self._logger, DEBUG, message, results)
         return results
 
-    def get(self, private_key_uuid: str) -> dict[str, Any]:
-        try:
-            _ = asyncio.get_running_loop()
-            return self._get(private_key_uuid)
-        except RuntimeError:
-            return asyncio.run(self._get(private_key_uuid))
+    def create(self, data: Dict[str, Any], **kwargs
+               ) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
+        """Create a new private key.
 
-    #################
-    # CREATE:
-    async def _create(self, data: dict[str, Any]) -> dict[str, Any]:
-        _log_message(self._logger, DEBUG, f"Start to create a new private key")
-        endpoint = "security/keys"
-        results = post(self._base_url, endpoint, self._headers, data=data)
-        _log_message(self._logger, DEBUG, f"Finish creating a new private key")
+        Args:
+            data: Key configuration containing:
+                - name (str): Key name
+                - description (str): Key description
+                - private_key (str, required): The private key content
+            **kwargs: Additional configuration options
+
+        Returns:
+            Dictionary containing:
+            - uuid (str): UUID of the created key
+
+        Raises:
+            CoolifyError: For general API errors
+            CoolifyAuthenticationError: If authentication fails
+            CoolifyValidationError: If required fields are missing
+        """
+        data = create_data_with_kwargs(data, **kwargs)
+        message = "Start to create a new private key"
+        _log_message(self._logger, DEBUG, message, data)
+        results = self._http_utils.post("security/keys", data=data)
+        message = "Finish creating a new private key"
+        _log_message(self._logger, DEBUG, message, results)
         return results
 
-    def create(self, data: dict[str, Any]) -> dict[str, Any]:
-        try:
-            _ = asyncio.get_running_loop()
-            return self._create(data)
-        except RuntimeError:
-            return asyncio.run(self._create(data))
+    def update(self, key_uuid: str, data: Dict[str, Any], **kwargs
+               ) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
+        """Update a private key.
 
-    #################
-    # UPDATE:
-    async def _update(self, key_uuid: str, data: dict[str, Any]) -> dict[str, Any]:
-        _log_message(self._logger, DEBUG, f"Start to update key with id: {key_uuid}")
-        endpoint = f"security/keys/{key_uuid}"
-        results = patch(self._base_url, endpoint, self._headers, data=data)
-        _log_message(self._logger, DEBUG, f"Finish updating key with id: {key_uuid}")
+        Args:
+            key_uuid: UUID of the key to update
+            data: Updated key configuration containing:
+                - name (str): Key name
+                - description (str): Key description
+                - private_key (str, required): The private key content
+            **kwargs: Additional configuration options
+
+        Returns:
+            Dictionary containing:
+            - uuid (str): UUID of the updated key
+
+        Raises:
+            CoolifyError: For general API errors
+            CoolifyAuthenticationError: If authentication fails
+            CoolifyNotFoundError: If key UUID not found
+            CoolifyValidationError: If required fields are missing
+        """
+        data = create_data_with_kwargs(data, **kwargs)
+        message = f"Start to update key with uuid: {key_uuid}"
+        _log_message(self._logger, DEBUG, message, data)
+        results = self._http_utils.patch(f"security/keys/{key_uuid}", data=data)
+        message = f"Finish updating key with uuid: {key_uuid}"
+        _log_message(self._logger, DEBUG, message, results)
         return results
 
-    def update(self, key_uuid: str, data: Optional[dict[str, Any]], **kwargs) -> dict[str, Any]:
-        real_data = utils.create_data_with_kwargs(data, **kwargs)
-        try:
-            _ = asyncio.get_running_loop()
-            return self._update(key_uuid, real_data)
-        except RuntimeError:
-            return asyncio.run(self._update(key_uuid, real_data))
+    def delete(self, key_uuid: str) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
+        """Delete a private key.
 
-    #####################
-    # DELETE:
-    async def _delete(self, key_uuid: str) -> dict[str, Any]:
-        _log_message(self._logger, DEBUG, f"Start to delete key with id: {key_uuid}")
-        endpoint = f"security/keys/{key_uuid}"
-        results = delete(self._base_url, endpoint, self._headers)
-        _log_message(self._logger, DEBUG, f"Finish deleting key with id: {key_uuid}")
+        Args:
+            key_uuid: UUID of the key to delete
+
+        Returns:
+            Dictionary containing confirmation:
+            - message (str): "Private Key deleted."
+
+        Raises:
+            CoolifyError: For general API errors
+            CoolifyAuthenticationError: If authentication fails
+            CoolifyNotFoundError: If key UUID not found
+        """
+        message = f"Start to delete key with uuid: {key_uuid}"
+        _log_message(self._logger, DEBUG, message)
+        results = self._http_utils.delete(f"security/keys/{key_uuid}")
+        message = f"Finish deleting key with uuid: {key_uuid}"
+        _log_message(self._logger, DEBUG, message, results)
         return results
-
-
-    def delete(self, key_uuid: str) -> dict[str, Any]:
-        try:
-            _ = asyncio.get_running_loop()
-            return self._delete(key_uuid)
-        except RuntimeError:
-            return asyncio.run(self._delete(key_uuid))

@@ -1,338 +1,300 @@
-"""Filename: applications_create.py"""
-#   Copyright (c) 2024.
-#  #
-#   Proprietary License
-#  #
-#   management-tool License Agreement
-#  #
-#   Permission is hereby granted, to any person contracted with Rapid Dev Group to
-#   use this software and associated documentation files (the "Software"), to use
-#   the Software for personal and commercial purposes, subject to the following
-#   conditions:
-#  #
-#   1. Redistribution and use in source and binary forms, with or without
-#      modification, are not permitted.
-#   2. The Software shall be used for Good, not Evil.
-#  #
-#   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-#   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-#   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-#   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-#   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-#   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-#   SOFTWARE.
-#  #
-#   Contact: pn@goldeverywhere.com
-#
-import asyncio
-from logging import getLogger, DEBUG
-from typing import Optional, Any
+"""Application creation functionality for the Coolify API client.
 
+This module provides methods for creating different types of applications in Coolify, including:
+- Public Git repositories
+- Private Git repositories (via GitHub App or Deploy Key)
+- Dockerfile-based applications
+- Docker image-based applications
+- Docker Compose applications
+
+Example:
+    ```python
+    from coolify_api import CoolifyAPIClient
+
+    client = CoolifyAPIClient()
+
+    # Create from public repository
+    app = client.applications.create.public(
+        project_uuid="proj-uuid",
+        server_uuid="srv-uuid",
+        environment_name="production",
+        git_repository="https://github.com/user/repo",
+        git_branch="main",
+        build_pack="nixpacks",
+        ports_exposes="3000"
+    )
+
+    # Create from Docker image
+    app = client.applications.create.docker_image(
+        project_uuid="proj-uuid",
+        server_uuid="srv-uuid",
+        environment_name="production",
+        docker_registry_image_name="nginx",
+        docker_registry_image_tag="latest",
+        ports_exposes="80"
+    )
+    ```
+"""
+from logging import getLogger, DEBUG
+from typing import Any, Coroutine
+
+from ._utils import create_data_with_kwargs
 from ._logging import _log_message
-from .url_utils import post
-from coolify_api import _utils
+from ._http_utils import HTTPUtils
 
 
 class CoolifyApplicationCreate:
-    """
-    Handles the creation of various types of applications using Coolify's API.
+    """Handles creation of different types of Coolify applications.
 
-    Provides methods to create public applications, private applications through GitHub,
-    private applications using deploy keys, Dockerfile applications, Docker image applications,
-    and Docker Compose applications. Utilizes asynchronous HTTP calls to interact with Coolify's
-    API, while offering a structured way to handle application creation with optional data input
-    and logging support.
+    This class provides methods for creating various types of applications supported by Coolify,
+    including Git repositories, Dockerfiles, Docker images, and Docker Compose configurations.
 
-    :ivar _base_url: Base URL used for API communication.
-    :type _base_url: str
-    :ivar _headers: Headers used for API requests.
-    :type _headers: dict
-    :ivar _logger: Logger instance for recording debug information.
-    :type _logger: logging.Logger
+    Attributes:
+        _http_utils (HTTPUtils): HTTP client for making API requests
+        _logger: Logger instance for this class
     """
-    def __init__(self, base_url: str, headers: dict) -> None:
-        self._base_url = base_url
-        """Base URL for the class."""
-        self._headers = headers
-        """Headers for the class."""
+
+    def __init__(self, http_utils: HTTPUtils) -> None:
+        """Initialize the application creation manager.
+
+        Args:
+            http_utils: HTTP client for making API requests
+        """
+        self._http_utils = http_utils
         self._logger = getLogger(__name__)
-        """Logger for the class."""
 
-################
-# Public Repo:
-    async def _public(self, data: dict[str, Any]) -> dict[str, Any]:
+    def public(self, project_uuid: str, server_uuid: str, environment_name: str,
+               git_repository: str, git_branch: str, build_pack: str, ports_exposes: str,
+               **kwargs) -> dict[str, Any] | Coroutine[Any, Any, dict[str, Any]]:
+        """Create an application from a public Git repository.
+
+        Args:
+            project_uuid: UUID of the project to create the application in
+            server_uuid: UUID of the server to deploy the application to
+            environment_name: Name of the environment (e.g., "production")
+            git_repository: URL of the Git repository
+            git_branch: Branch to deploy from
+            build_pack: Build pack type ("nixpacks", "static", "dockerfile", "dockercompose")
+            ports_exposes: Ports to expose (e.g., "3000" or "80,443")
+            **kwargs: Optional parameters including:
+                - name (str): Application name
+                - description (str): Application description
+                - domains (str): Application domains
+                - install_command (str): Custom install command
+                - build_command (str): Custom build command
+                - start_command (str): Custom start command
+                - base_directory (str): Base directory for commands
+                - publish_directory (str): Directory to publish
+                - instant_deploy (bool): Deploy immediately after creation
+
+        Returns:
+            Dictionary containing the created application details
+
+        Raises:
+            CoolifyError: For general API errors
+            CoolifyAuthenticationError: If authentication fails
         """
-        Initiates the creation of a public repository application.
+        data = create_data_with_kwargs({
+            "project_uuid": project_uuid,
+            "server_uuid": server_uuid,
+            "environment_name": environment_name,
+            "git_repository": git_repository,
+            "git_branch": git_branch,
+            "build_pack": build_pack,
+            "ports_exposes": ports_exposes
+        }, **kwargs)
 
-        This asynchronous function interacts with the specified endpoint to create a
-        public repository application using the provided input data. It logs debugging
-        information before and after the request execution. The function relies on
-        an async HTTP POST call to send the request and retrieve the result, which it
-        subsequently returns.
+        _log_message(self._logger, DEBUG, "Creating public application", data)
+        result = self._http_utils.post("applications/public", data=data)
+        _log_message(self._logger, DEBUG, "Public application created", result)
+        return result
 
-        :param data: A dictionary containing the required information for creating
-                     the public repository application.
-        :type data: dict[str, Any]
-        :return: Result of the HTTP POST request for creating the public repository
-                 application.
-        :rtype: dict[str, Any]
+    def private_github_app(self, project_uuid: str, server_uuid: str, environment_name: str,
+                          github_app_uuid: str, git_repository: str, git_branch: str,
+                          build_pack: str, ports_exposes: str, **kwargs
+                          ) -> dict[str, Any] | Coroutine[Any, Any, dict[str, Any]]:
+        """Create an application from a private repository using GitHub App authentication.
+
+        Args:
+            project_uuid: UUID of the project to create the application in
+            server_uuid: UUID of the server to deploy the application to
+            environment_name: Name of the environment
+            github_app_uuid: UUID of the GitHub App for authentication
+            git_repository: URL of the private Git repository
+            git_branch: Branch to deploy from
+            build_pack: Build pack type ("nixpacks", "static", "dockerfile", "dockercompose")
+            ports_exposes: Ports to expose
+            **kwargs: Optional parameters (same as public() method)
+
+        Returns:
+            Dictionary containing the created application details
+
+        Raises:
+            CoolifyError: For general API errors
+            CoolifyAuthenticationError: If authentication fails
         """
-        _log_message(self._logger, DEBUG, "Start to create a public repo app.", data)
-        endpoint = "applications/public"
-        results = post(self._base_url, endpoint, self._headers, data=data)
-        _log_message(self._logger, DEBUG, "Finish creating a public repo app")
-        return results
+        data = create_data_with_kwargs({
+            "project_uuid": project_uuid,
+            "server_uuid": server_uuid,
+            "environment_name": environment_name,
+            "github_app_uuid": github_app_uuid,
+            "git_repository": git_repository,
+            "git_branch": git_branch,
+            "build_pack": build_pack,
+            "ports_exposes": ports_exposes
+        }, **kwargs)
 
-    def public(self, data: Optional[dict[str, Any]] = None, **kwargs) -> dict[str, Any]:
+        _log_message(self._logger, DEBUG, "Creating private GitHub App application", data)
+        result = self._http_utils.post("applications/private-github-app", data=data)
+        _log_message(self._logger, DEBUG, "Private GitHub App application created", result)
+        return result
+
+    def private_deploy_key(self, project_uuid: str, server_uuid: str, environment_name: str,
+                          private_key_uuid: str, git_repository: str, git_branch: str,
+                          build_pack: str, ports_exposes: str, **kwargs
+                          ) -> dict[str, Any] | Coroutine[Any, Any, dict[str, Any]]:
+        """Create an application from a private repository using deploy key authentication.
+
+        Args:
+            project_uuid: UUID of the project to create the application in
+            server_uuid: UUID of the server to deploy the application to
+            environment_name: Name of the environment
+            private_key_uuid: UUID of the deploy key for authentication
+            git_repository: URL of the private Git repository
+            git_branch: Branch to deploy from
+            build_pack: Build pack type ("nixpacks", "static", "dockerfile", "dockercompose")
+            ports_exposes: Ports to expose
+            **kwargs: Optional parameters (same as public() method)
+
+        Returns:
+            Dictionary containing the created application details
+
+        Raises:
+            CoolifyError: For general API errors
+            CoolifyAuthenticationError: If authentication fails
         """
-        Asynchronously or synchronously processes the provided data and returns the result.
+        data = create_data_with_kwargs({
+            "project_uuid": project_uuid,
+            "server_uuid": server_uuid,
+            "environment_name": environment_name,
+            "private_key_uuid": private_key_uuid,
+            "git_repository": git_repository,
+            "git_branch": git_branch,
+            "build_pack": build_pack,
+            "ports_exposes": ports_exposes
+        }, **kwargs)
 
-        This function adapts its behavior based on the availability of an active event loop.
-        If an event loop is running, it executes the `_a_public` method asynchronously; otherwise,
-        it runs the `_a_public` method using `asyncio.run`, blocking until the coroutine is complete.
+        _log_message(self._logger, DEBUG, "Creating private deploy key application", data)
+        result = self._http_utils.post("applications/private-deploy-key", data=data)
+        _log_message(self._logger, DEBUG, "Private deploy key application created", result)
+        return result
 
-        :param data: Optional dictionary containing input data to be processed.
-        :type data: Optional[dict[str, Any]]
-        :param kwargs: Additional keyword arguments passed to the `_a_public` method.
-        :return: A dictionary containing the result of the processed operation.
-        :rtype: dict[str, Any]
+    def dockerfile(self, project_uuid: str, server_uuid: str, environment_name: str,
+                  dockerfile: str, ports_exposes: str, **kwargs
+                  ) -> dict[str, Any] | Coroutine[Any, Any, dict[str, Any]]:
+        """Create an application from a Dockerfile.
+
+        Args:
+            project_uuid: UUID of the project to create the application in
+            server_uuid: UUID of the server to deploy the application to
+            environment_name: Name of the environment
+            dockerfile: Content of the Dockerfile
+            ports_exposes: Ports to expose
+            **kwargs: Optional parameters including:
+                - name (str): Application name
+                - description (str): Application description
+                - domains (str): Application domains
+                - instant_deploy (bool): Deploy immediately after creation
+
+        Returns:
+            Dictionary containing the created application details
+
+        Raises:
+            CoolifyError: For general API errors
+            CoolifyAuthenticationError: If authentication fails
         """
-        real_data = utils.create_data_with_kwargs(data, **kwargs)
-        try:
-            _ = asyncio.get_running_loop()
-            return self._public(real_data)
-        except RuntimeError:
-            return asyncio.run(self._public(real_data))
+        data = create_data_with_kwargs({
+            "project_uuid": project_uuid,
+            "server_uuid": server_uuid,
+            "environment_name": environment_name,
+            "dockerfile": dockerfile,
+            "ports_exposes": ports_exposes
+        }, **kwargs)
 
-###########
-# Git Hub private repo using git-hub app:
-    async def _private_github_app(self, data: dict[str, Any]) -> dict[str, Any]:
+        _log_message(self._logger, DEBUG, "Creating Dockerfile application", data)
+        result = self._http_utils.post("applications/dockerfile", data=data)
+        _log_message(self._logger, DEBUG, "Dockerfile application created", result)
+        return result
+
+    def docker_image(self, project_uuid: str, server_uuid: str, environment_name: str,
+                    docker_registry_image_name: str, ports_exposes: str, **kwargs
+                    ) -> dict[str, Any] | Coroutine[Any, Any, dict[str, Any]]:
+        """Create an application from a Docker image.
+
+        Args:
+            project_uuid: UUID of the project to create the application in
+            server_uuid: UUID of the server to deploy the application to
+            environment_name: Name of the environment
+            docker_registry_image_name: Name of the Docker image
+            ports_exposes: Ports to expose
+            **kwargs: Optional parameters including:
+                - docker_registry_image_tag (str): Image tag (default: "latest")
+                - name (str): Application name
+                - description (str): Application description
+                - domains (str): Application domains
+                - instant_deploy (bool): Deploy immediately after creation
+
+        Returns:
+            Dictionary containing the created application details
+
+        Raises:
+            CoolifyError: For general API errors
+            CoolifyAuthenticationError: If authentication fails
         """
-        Asynchronously creates a private GitHub application using the provided data.
+        data = create_data_with_kwargs({
+            "project_uuid": project_uuid,
+            "server_uuid": server_uuid,
+            "environment_name": environment_name,
+            "docker_registry_image_name": docker_registry_image_name,
+            "ports_exposes": ports_exposes
+        }, **kwargs)
 
-        This method interacts with a GitHub endpoint that facilitates the creation of
-        private applications, utilizing the provided base URL and authentication
-        headers. The input data defines the parameters necessary for the application
-        creation. Logging is implemented to document the start and completion of the
-        operation for debugging purposes.
+        _log_message(self._logger, DEBUG, "Creating Docker image application", data)
+        result = self._http_utils.post("applications/dockerimage", data=data)
+        _log_message(self._logger, DEBUG, "Docker image application created", result)
+        return result
 
-        :param data: A dictionary containing the data required for creating the private
-            GitHub application.
-        :type data: dict[str, Any]
-        :return: A dictionary containing the results of the operation, which includes
-            information about the created private GitHub application.
-        :rtype: dict[str, Any]
+    def docker_compose(self, project_uuid: str, server_uuid: str, environment_name: str,
+                      docker_compose_raw: str, **kwargs
+                      ) -> dict[str, Any] | Coroutine[Any, Any, dict[str, Any]]:
+        """Create an application from a Docker Compose configuration.
+
+        Args:
+            project_uuid: UUID of the project to create the application in
+            server_uuid: UUID of the server to deploy the application to
+            environment_name: Name of the environment
+            docker_compose_raw: Raw content of the docker-compose.yml file
+            **kwargs: Optional parameters including:
+                - name (str): Application name
+                - description (str): Application description
+                - instant_deploy (bool): Deploy immediately after creation
+                - use_build_server (bool): Whether to use build server
+
+        Returns:
+            Dictionary containing the created application details
+
+        Raises:
+            CoolifyError: For general API errors
+            CoolifyAuthenticationError: If authentication fails
         """
-        _log_message(self._logger, DEBUG, "Start to create a private app using GitHub.", data)
-        endpoint = "applications/private-github-app"
-        results = post(self._base_url, endpoint, self._headers, data=data)
-        _log_message(self._logger, DEBUG, "Finish creating a private GitHub app")
-        return results
+        data = create_data_with_kwargs({
+            "project_uuid": project_uuid,
+            "server_uuid": server_uuid,
+            "environment_name": environment_name,
+            "docker_compose_raw": docker_compose_raw
+        }, **kwargs)
 
-    def private_github_app(self, data: Optional[dict[str, Any]] = None, **kwargs) -> dict[str, Any]:
-        """
-        Constructs the actual data object by combining given ``data`` and ``kwargs``,
-        and invokes the asynchronous method ``_a_private_github_app`` for further
-        processing. If the call is already in an asynchronous context, it awaits
-        the asynchronous method directly; otherwise, it runs the asynchronous
-        method in a new event loop synchronously.
-
-        The method acts as an intermediary for handling data transformation
-        and maintains compatibility between synchronous and asynchronous
-        execution contexts.
-
-        :param data: Optional dictionary containing the initial input data.
-            If None, an empty data object is created.
-        :param kwargs: Additional keyword arguments to be merged into the data.
-        :return: A dictionary containing the result of the ``_a_private_github_app``
-            asynchronous method execution.
-        """
-        real_data = utils.create_data_with_kwargs(data, **kwargs)
-        try:
-            _ = asyncio.get_running_loop()
-            return self._private_github_app(real_data)
-        except RuntimeError:
-            return asyncio.run(self._private_github_app(real_data))
-
-##############
-# Private repo with a deploy-key:
-    async def _private_deploy_key(self, data: dict[str, Any]) -> dict[str, Any]:
-        """
-        Initiates the process of creating a private application using a deploy key and performs
-        asynchronous HTTP POST operation to the specified endpoint.
-
-        This method logs the initiation and completion of the creation process, utilizing the provided
-        deploy key details in the `data` parameter. The results of the operation are returned as a
-        dictionary.
-
-        :param data: A dictionary containing the deploy key details and additional parameters required
-            for creating a private application.
-        :type data: dict[str, Any]
-        :return: A dictionary containing the results of the private application creation process.
-        :rtype: dict[str, Any]
-        """
-        message = "Start to create a private app using deploy key"
-        _log_message(self._logger, DEBUG, message, data)
-        endpoint = "applications/private-deploy-key"
-        results = post(self._base_url, endpoint, self._headers, data=data)
-        _log_message(self._logger, DEBUG, "Finish creating a private app using deploy key")
-        return results
-
-    def private_deploy_key(self, data: Optional[dict[str, Any]] = None, **kwargs) -> dict[str, Any]:
-        """
-        Generates and manages a private deploy key for authentication. This method allows asynchronous
-        execution if there is an existing running event loop; otherwise, it will handle the invocation
-        of the asynchronous operation in a synchronous context by running the coroutine.
-
-        :param data: The optional dictionary containing deployment-specific data used during the
-                     creation or retrieval of the private deploy key.
-        :type data: Optional[dict[str, Any]]
-        :param kwargs: Additional key-value arguments that may be required for processing during
-                       deployment.
-        :return: A dictionary containing the details of the private deploy key or operation result.
-        :rtype: dict[str, Any]
-        """
-        real_data = utils.create_data_with_kwargs(data, **kwargs)
-        try:
-            _ = asyncio.get_running_loop()
-            return self._private_deploy_key(real_data)
-        except RuntimeError:
-            return asyncio.run(self._private_deploy_key(real_data))
-
-##############
-# Supplied dockerfile:
-    async def _dockerfile(self, data: dict[str, Any]) -> dict[str, Any]:
-        """
-        Creates a Dockerfile-based application by sending the necessary data to a given
-        endpoint asynchronously. The method logs the start and finish of the operation
-        for debugging purposes.
-
-        :param data: The dictionary containing the details required to create a
-            Dockerfile-based application.
-        :type data: dict[str, Any]
-        :return: A dictionary containing the results of the operation.
-        :rtype: dict[str, Any]
-        """
-        _log_message(self._logger, DEBUG, "Start to create a Dockerfile application.", data)
-        endpoint = "applications/dockerfile"
-        results = post(self._base_url, endpoint, self._headers, data=data)
-        _log_message(self._logger, DEBUG, "Finish creating a Dockerfile application")
-        return results
-
-    def dockerfile(self, data: Optional[dict[str, Any]] = None, **kwargs) -> dict[str, Any]:
-        """
-        Generate a Dockerfile representation based on provided data and keyword arguments.
-
-        This method creates a Dockerfile configuration by combining user-provided
-        data and additional keyword arguments. It supports both synchronous and
-        asynchronous execution, depending on the presence of a running asyncio
-        event loop.
-
-        :param data: Optional dictionary containing initial data for the Dockerfile.
-        :param kwargs: Additional parameters to extend or override the provided data.
-        :return: A dictionary representation of the resulting Dockerfile configuration.
-        """
-        real_data = utils.create_data_with_kwargs(data, **kwargs)
-        try:
-            _ = asyncio.get_running_loop()
-            return self._dockerfile(real_data)
-        except RuntimeError:
-            return asyncio.run(self._dockerfile(real_data))
-
-###########
-# Supplied docker image:
-    async def _docker_image(self, data: Optional[dict[str, Any]], **kwargs) -> dict[str, Any]:
-        """
-        Asynchronously creates a Docker image application by sending data to a specified endpoint.
-        This function combines the provided data and additional keyword arguments into a complete
-        data payload, logs the creation process steps, and sends an HTTP POST request to create the
-        application. Returns the result of the API call.
-
-        :param data: Dictionary containing the main data for creating the Docker image
-        application. This can be optional if additional data is provided via keyword
-        arguments.
-        :type data: Optional[dict[str, Any]]
-
-        :param kwargs: Additional data to be included in the request payload.
-        :type kwargs: Any
-
-        :return: Results from the API call containing details of the created Docker image
-        application.
-        :rtype: dict[str, Any]
-        """
-        _log_message(self._logger, DEBUG, "Start to create a Docker image application.", data)
-        endpoint = "applications/dockerimage"
-        results = post(self._base_url, endpoint, self._headers, data=data)
-        _log_message(self._logger, DEBUG, "Finish creating a Docker image application")
-        return results
-
-    def docker_image(self, data: Optional[dict[str, Any]] = None, **kwargs) -> dict[str, Any]:
-        """
-        Generate or retrieve a Docker image asynchronously.
-
-        This function handles the processing of input data and manages whether
-        to execute the operation within an existing event loop or synchronously
-        within a new one, depending on the runtime environment. It utilizes
-        helper utilities to integrate additional keyword arguments into the
-        input data and interacts with the asynchronous function (`_a_docker_image`)
-        for the actual execution.
-
-        :param data: Optional input data containing parameters for the image
-            processing, provided as a dictionary. If `None`, an empty dictionary
-            is used.
-        :param kwargs: Additional keyword arguments to be incorporated into the
-            `data` dictionary by the helper utility `create_data_with_kwargs`.
-        :return: A dictionary representing the processed Docker image data or
-            result following the execution of `_a_docker_image`.
-        """
-        real_data = utils.create_data_with_kwargs(data, **kwargs)
-        try:
-            _ = asyncio.get_running_loop()
-            return self._docker_image(real_data)
-        except RuntimeError:
-            return asyncio.run(self._docker_image(real_data))
-
-    async def _a_docker_compose(self, data: dict[str, Any]) -> dict[str, Any]:
-        """
-        Asynchronously creates a Docker Compose application.
-
-        This function posts the provided application data to the specified Docker
-        Compose endpoint to create a new application. The operation is logged at
-        the DEBUG level both at the beginning and after the operation's completion.
-
-        :param data: A dictionary containing the configuration and specifications
-            required to create a Docker Compose application.
-        :type data: dict[str, Any]
-        :return: A dictionary containing the results of the API operation.
-        :rtype: dict[str, Any]
-        """
-        _log_message(self._logger, DEBUG, "Start to create a Docker Compose application.", data)
-        endpoint = "applications/dockercompose"
-        results = post(self._base_url, endpoint, self._headers, data=data)
-        _log_message(self._logger, DEBUG, "Finish creating a Docker Compose application")
-        return results
-
-    def docker_compose(self, data: Optional[dict[str, Any]] = None, **kwargs) -> dict[str, Any]:
-        """
-        Generates the appropriate data dictionary based on provided input parameters and executes
-        Docker Compose functionality either synchronously or asynchronously depending on the
-        current running event loop.
-
-        If there is already an active asyncio event loop, the method ensures that the `_a_docker_compose`
-        function is triggered asynchronously and its result is returned. Otherwise, it creates a new event loop
-        by invoking `asyncio.run` to execute `_a_docker_compose`. This allows for flexible execution with or
-        without an active asynchronous environment.
-
-        :param data: A dictionary containing pre-generated data for configuring Docker Compose.
-            If None, the method generates data based on keyword arguments.
-        :param kwargs: Additional configuration parameters used to construct the data dictionary.
-            These parameters are merged with `data` to create the final input.
-        :return: A dictionary containing the result of the Docker Compose operation, either processed
-            asynchronously or synchronously depending on the event loop state.
-        """
-        real_data = utils.create_data_with_kwargs(data, **kwargs)
-        try:
-            _ = asyncio.get_running_loop()
-            return self._a_docker_compose(real_data)
-        except RuntimeError:
-            return asyncio.run(self._a_docker_compose(real_data))
+        _log_message(self._logger, DEBUG, "Creating Docker Compose application", data)
+        result = self._http_utils.post("applications/dockercompose", data=data)
+        _log_message(self._logger, DEBUG, "Docker Compose application created", result)
+        return result

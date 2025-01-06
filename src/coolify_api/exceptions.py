@@ -1,24 +1,146 @@
-import logging
-import os
-from typing import Optional, Any
+"""Coolify API exception classes.
+
+This module provides custom exception classes for handling various error conditions
+that may occur when interacting with the Coolify API.
+
+Example:
+    ```python
+    from coolify_api import CoolifyAPIClient
+    from coolify_api.exceptions import CoolifyAuthenticationError, CoolifyValidationError
+
+    client = CoolifyAPIClient()
+
+    try:
+        client.applications.get("invalid-uuid")
+    except CoolifyValidationError as e:
+        print(f"Validation failed: {e.message}")
+    except CoolifyAuthenticationError as e:
+        print(f"Authentication failed: {e.message}")
+    ```
+"""
+
 from requests.models import Response
+from aiohttp import ClientResponse
 
-from ._logging import OUTPUT_IS_SHY
 
+class CoolifyError(Exception):
+    """Base class for Coolify API exceptions.
 
-class CoolifyAPIError(Exception):
-    """Base class for other Coolify API exceptions."""
+    All custom exceptions in this module inherit from this class, allowing for
+    catch-all error handling of Coolify-specific errors.
+
+    Attributes:
+        message: Human-readable error description
+    """
     def __init__(self, message: str, *args, **kw_args) -> None:
+        """Initialize base error.
+
+        Args:
+            message: Error description
+            *args: Additional positional arguments for Exception class
+            **kw_args: Additional attributes to add to the exception
+        """
         self.message: str = message
-        super().__init__(message, *args, **kw_args)
+        self.__dict__.update(kw_args)
+        super().__init__(message, *args)
 
 
-class CoolifyAPIValidationError(CoolifyAPIError):
-    """Exception raised for when the Coolify API responds with a 'validation failed' error."""
-    def __init__(self, response):
+class CoolifyAuthenticationError(CoolifyError):
+    """Exception raised when authentication with the Coolify API fails.
+
+    This can occur due to invalid API keys, expired tokens, or missing credentials.
+
+    Attributes:
+        message: Error description including the API response
+        headers: Response headers that may contain auth-related information
+    """
+    def __init__(self, response: Response | ClientResponse, headers, *args, **kw_args) -> None:
+        """Initialize authentication error.
+
+        Args:
+            response: HTTP response that triggered the error
+            headers: Response headers
+            *args: Additional positional arguments
+            **kw_args: Additional keyword arguments
+        """
+        message = f"Coolify Authentication Error: {response.text}"
+        super().__init__(message, *args, headers=headers, **kw_args)
+
+
+class CoolifyPermissionError(CoolifyError):
+    """Exception raised when the API request lacks required permissions.
+
+    This occurs when trying to access resources or perform operations that require
+    higher privilege levels than the current user has.
+
+    Attributes:
+        message: Error description including the API response
+        headers: Response headers that may contain permission-related information
+    """
+    def __init__(self, response: Response | ClientResponse, headers, *args, **kw_args) -> None:
+        """Initialize permission error.
+
+        Args:
+            response: HTTP response that triggered the error
+            headers: Response headers
+            *args: Additional positional arguments
+            **kw_args: Additional keyword arguments
+        """
+        message = f"Coolify Permission Error: {response.text}"
+        super().__init__(message, *args, headers=headers, **kw_args)
+
+
+class CoolifyNotFoundError(CoolifyError):
+    """Exception raised when a requested resource is not found.
+
+    This occurs when trying to access a specific resource (like an application,
+    database, or deployment) using an ID or UUID that doesn't exist.
+
+    Attributes:
+        message: Error description including the resource type and identifier
+        resource_type: Type of resource that wasn't found (e.g., "application", "database")
+        resource_id: Identifier that was used in the request
+    """
+    def __init__(self, response: Response | ClientResponse, *args, **kwargs) -> None:
+        """Initialize not found error.
+
+        Args:
+            response: HTTP response that triggered the error
+            *args: Additional positional arguments
+            **kwargs: Additional keyword arguments
+        """
+        message = f"Coolify Resource Not Found: {response.url}"
+        if response.text:
+            message += f" - {response.text}"
+        super().__init__(message, *args, response=response, **kwargs)
+
+
+class CoolifyValidationError(CoolifyError):
+    """Exception raised when the API request fails validation.
+
+    This occurs when the request contains invalid data, missing required fields,
+    or violates API constraints. The error message includes detailed validation
+    failures from the API response.
+
+    Attributes:
+        message: Formatted error description with validation details
+        response: Full API response for additional error context
+    """
+    def __init__(self, response: Response | ClientResponse, *args, **kwargs):
+        """Initialize validation error.
+
+        Parses the API response to create a detailed error message that includes
+        all validation failures.
+
+        Args:
+            response: HTTP response containing validation errors
+            *args: Additional positional arguments
+            **kwargs: Additional keyword arguments
+        """
         error_data = response.json()
-        message = f"Coolify API Error: {error_data['message']}"
+        message = "Coolify Validation Error:"
         if isinstance(error_data, dict):
+            message += f" {error_data['message']}"
             if isinstance(error_data['errors'], list):
                 message = ", ".join(error_data['errors'])
             elif isinstance(error_data['errors'], str):
@@ -29,100 +151,4 @@ class CoolifyAPIValidationError(CoolifyAPIError):
         elif isinstance(error_data, list):
             for item in error_data:
                 message += f"\n\t{item}"
-        super().__init__(message)
-        self.error_data = error_data
-        self.response = response
-
-
-class CoolifyAPIResponseError(CoolifyAPIError):
-    """Exception raised for when the Coolify API responds with an error."""
-
-    def __init__(self,
-                 url: str,
-                 headers: dict,
-                 data: Optional[dict] = None,
-                 response: Optional[Response] = None,
-                 message_start: str = "Coolify API Error",
-                 *args, **kw_args) -> None:
-        # Store the args:
-        self.url: str = url
-        self.headers: dict = headers
-        self.response: Response = response
-        self.data: Optional[dict] = data
-        self._kwargs: Optional[dict] = kw_args
-
-        message = (f"\n{message_start}: \n",
-                   f"\tUrl: {url},\n"
-                   f"\tRecv Status Code: {response.status_code}")
-        if not OUTPUT_IS_SHY:
-            message += (f",\n",
-                        f"\tSent Headers: {headers},\n",
-                        f"\tSent Data: {data},\n",
-                        f"\tRecv Response: {response.text}\n")
-        # Init super:
-        super().__init__(message, url, response, data, *args)
-
-
-class CoolifyAuthenticationError(CoolifyAPIResponseError):
-    """Exception raised for authentication errors in the Coolify API."""
-    def __init__(self, *args, **kw_args) -> None:
-        message = "Coolify Authentication Error, invalid bearer token."
-        super().__init__(message, *args, **kw_args)
-
-
-class CoolifyKeyUnknownError(CoolifyAPIError):
-    """Exception raised when a key is not found in the known keys."""
-    def __init__(self, key_name: str, *args, **kw_args) -> None:
-        message = f"Coolify API Error, key '{key_name}' not found in known keys."
-        super().__init__(message, *args, **kw_args)
-
-
-class CoolifyKeyRequiredError(CoolifyAPIError):
-    """Exception raised for required key errors in the Coolify API."""
-    def __init__(self, key_name: str, *args, **kw_args) -> None:
-        message = f"Coolify API Error, required key '{key_name}' not found."
-        super().__init__(message, *args, **kw_args)
-
-
-class CoolifyKeyValueTypeError(CoolifyAPIError):
-    """Exception raised for key value type errors in the Coolify API."""
-    def __init__(self, key_name: str, value: Any, key_type: type, *args, **kw_args) -> None:
-        message = (f"Coolify API Error, key '{key_name}' has invalid type '{str(type(value))}', "
-                   f"expected type '{str(key_type)}'.")
-        super().__init__(message, *args, **kw_args)
-
-
-class CoolifyKeyValueError(CoolifyAPIError):
-    """Exception raised for key value errors in the Coolify API."""
-    def __init__(self, key_name: str, value: Any, allowed: list[Any], *args, **kw_args) -> None:
-        message = (f"Coolify API Error, key '{key_name}' has invalid value '{value}'."
-                   f" Allowed values: {allowed}")
-        super().__init__(message, *args, **kw_args)
-
-
-class RequestsError(Exception):
-    """Exception raised for errors that occur when making requests to Coolify API."""
-    def __init__(self,
-                 url: str,
-                 headers: dict,
-                 data: Optional[dict] = None,
-                 exception: Exception = None,
-                 *args, **kw_args) -> None:
-
-        # Store the properties:
-        self.url: str = url
-        self.headers: dict = headers
-        self.data: Optional[dict] = data
-        self.requests_exception: Exception = exception
-        self._kwargs: Optional[dict] = kw_args
-
-        # Create the message:
-        message = (f"\nError while making request:\n"
-                   f"  Target Url: {url},"
-                   f"  Got Exception type: {str(type(exception))}")
-        if not OUTPUT_IS_SHY:
-            message += (f",\n",
-                        f"  Sent Headers: {headers},\n"
-                        f"  Sent Data: {data},\n",
-                        f"  Recv Exception: {exception}\n")
-        super().__init__(message, url, headers, data, exception, *args)
+        super().__init__(message, *args, response=response, **kwargs)

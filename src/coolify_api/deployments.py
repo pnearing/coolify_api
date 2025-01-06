@@ -1,109 +1,142 @@
-#   Copyright (c) 2024.
-#  #
-#   Proprietary License
-#  #
-#   management-tool License Agreement
-#  #
-#   Permission is hereby granted, to any person contracted with Rapid Dev Group to
-#   use this software and associated documentation files (the "Software"), to use
-#   the Software for personal and commercial purposes, subject to the following
-#   conditions:
-#  #
-#   1. Redistribution and use in source and binary forms, with or without
-#      modification, are not permitted.
-#   2. The Software shall be used for Good, not Evil.
-#  #
-#   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-#   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-#   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-#   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-#   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-#   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-#   SOFTWARE.
-#  #
-#   Contact: pn@goldeverywhere.com
-#
-import asyncio
+"""Coolify Deployments API client.
+
+This module provides methods to manage Coolify deployments, including:
+- Listing all deployments
+- Getting deployment details
+- Triggering deployments by UUID or tag
+
+Example:
+    ```python
+    from coolify_api import CoolifyAPIClient
+
+    client = CoolifyAPIClient()
+
+    # List all deployments
+    deployments = client.deployments.list_all()
+
+    # Get specific deployment
+    deployment = client.deployments.get("deploy-uuid")
+
+    # Trigger deployments
+    result = client.deployments.deploy(tag="production")  # Deploy by tag
+    result = client.deployments.deploy(deployment_uuid="deploy-uuid")  # Deploy by UUID
+    ```
+"""
+
 from logging import getLogger, DEBUG
-from typing import Optional, Any
+from typing import Optional, Any, Coroutine, Dict, List
 
 from ._logging import _log_message
-from .url_utils import get, post
+from ._http_utils import HTTPUtils
 
 
 class CoolifyDeployments:
-    """
-    Manages Coolify deployments, providing methods to perform operations such
-    as listing, retrieving, and deploying deployments.
+    """Manages Coolify deployments.
+
+    This class provides methods to interact with deployments in Coolify, including
+    listing, retrieving details, and triggering deployments.
     """
 
-    def __init__(self, base_url: str, headers: dict) -> None:
-        self._base_url = base_url
-        self._headers = headers
+    def __init__(self, http_utils: HTTPUtils) -> None:
+        """Initialize the deployments manager.
+
+        Args:
+            http_utils: HTTP client for making API requests
+        """
+        self._http_utils = http_utils
         self._logger = getLogger(__name__)
 
-    # LIST:
-    async def _list_all(self) -> list[dict[str, Any]]:
-        """ Asynchronously retrieves a list of all deployments from the specified endpoint. """
+    def list_all(self) -> List[Dict[str, Any]] | Coroutine[Any, Any, List[Dict[str, Any]]]:
+        """List all currently running deployments.
 
-        _log_message(self._logger, DEBUG, "Start to list all deployments")
-        endpoint = "deployments"
-        results = get(self._base_url, endpoint, self._headers)
-        _log_message(self._logger, DEBUG, "Finish listing all deployments")
+        Returns:
+            List of deployment objects containing details like:
+            - id (int): Internal ID
+            - application_id (str): ID of the application
+            - deployment_uuid (str): UUID of the deployment
+            - pull_request_id (int): PR ID if from pull request
+            - force_rebuild (bool): Whether rebuild was forced
+            - commit (str): Git commit hash
+            - status (str): Current status
+            - is_webhook (bool): Whether triggered by webhook
+            - is_api (bool): Whether triggered via API
+            - created_at (str): Creation timestamp
+            - updated_at (str): Last update timestamp
+            - logs (str): Deployment logs
+            - current_process_id (str): Current process ID
+            - restart_only (bool): Whether only restart
+            - git_type (str): Git provider type
+            - server_id (int): ID of the server
+            - application_name (str): Name of the application
+            - server_name (str): Name of the server
+            - deployment_url (str): Deployment URL
+            - destination_id (str): Destination ID
+            - only_this_server (bool): Whether limited to one server
+            - rollback (bool): Whether this is a rollback
+            - commit_message (str): Git commit message
+
+        Raises:
+            CoolifyError: For general API errors
+            CoolifyAuthenticationError: If authentication fails
+        """
+        message = "Start to list all deployments"
+        _log_message(self._logger, DEBUG, message)
+        results = self._http_utils.get("deployments")
+        message = "Finish listing all deployments"
+        _log_message(self._logger, DEBUG, message, results)
         return results
 
-    def list_all(self) -> list[dict[str, Any]]:
-        """ Lists all elements asynchronously or synchronously based on the running environment. """
+    def get(self, deployment_uuid: str) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
+        """Get deployment details by UUID.
 
-        try:
-            _ = asyncio.get_running_loop()
-            return self._list_all()
-        except RuntimeError:
-            return asyncio.run(self._list_all())
+        Args:
+            deployment_uuid: UUID of the deployment to retrieve
 
-    # GET:
-    async def _get(self, deployment_uuid: str) -> dict[str, Any]:
-        """ Fetches deployment information asynchronously based on the provided UUID. """
+        Returns:
+            Deployment object containing full details (same structure as list_all)
 
-        _log_message(self._logger, DEBUG, f"Start to get deployment with id: {deployment_uuid}")
-        endpoint = f"deployments/{deployment_uuid}"
-        results = get(self._base_url, endpoint, self._headers)
-        _log_message(self._logger, DEBUG, f"Finish getting deployment with id: {deployment_uuid}")
+        Raises:
+            CoolifyError: For general API errors
+            CoolifyAuthenticationError: If authentication fails
+            CoolifyNotFoundError: If deployment UUID not found
+        """
+        message = f"Start to get deployment with uuid: {deployment_uuid}"
+        _log_message(self._logger, DEBUG, message)
+        results = self._http_utils.get(f"deployments/{deployment_uuid}")
+        message = f"Finish getting deployment with uuid: {deployment_uuid}"
+        _log_message(self._logger, DEBUG, message, results)
         return results
 
-    def get(self, deployment_uuid: str) -> dict[str, Any]:
-        """ Retrieve deployment details based on the UUID provided. """
+    def deploy(self, deployment_uuid: Optional[str] = None, tag: Optional[str] = None,
+               force: bool = False) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
+        """Trigger deployment by UUID or tag.
 
-        try:
-            _ = asyncio.get_running_loop()
-            return self._get(deployment_uuid)
-        except RuntimeError:
-            return asyncio.run(self._get(deployment_uuid))
+        Args:
+            deployment_uuid: UUID(s) of deployment(s) to trigger. Can be comma-separated.
+            tag: Tag name(s) to deploy. Can be comma-separated.
+            force: Whether to force rebuild (without cache)
 
-    ###################
-    # DEPLOY:
-    async def _deploy(self,
-                      deployment_uuid: Optional[str] = None,
-                      tag: Optional[str] = None,
-                      ) -> dict[str, Any]:
-        """ Deploy a current deployment asynchronously using its deployment UUID. """
+        Returns:
+            Dictionary containing deployment details:
+            - deployments (List[Dict]): List of triggered deployments containing:
+                - message (str): Status message
+                - resource_uuid (str): UUID of the resource
+                - deployment_uuid (str): UUID of the new deployment
+
+        Raises:
+            CoolifyError: For general API errors
+            CoolifyAuthenticationError: If authentication fails
+            AttributeError: If neither deployment_uuid nor tag is specified
+        """
         if deployment_uuid is None and tag is None:
             raise AttributeError("Either deployment_uuid or tag must be specified")
-        params = {}
+        params = {"force": force}
         if deployment_uuid:
             params["uuid"] = deployment_uuid
         if tag:
             params["tag"] = tag
-        _log_message(self._logger, DEBUG, f"Start to deploy deployment with params: {params}")
-        endpoint = "deployments"
-        results = post(self._base_url, endpoint, headers=self._headers, params=params)
-        _log_message(self._logger, DEBUG, f"Finish deploying deployment.")
+        message = f"Start to deploy deployment with params: {params}"
+        _log_message(self._logger, DEBUG, message)
+        results = self._http_utils.post("deploy", params=params)
+        _log_message(self._logger, DEBUG, "Finish deploying deployment.")
         return results
-
-    def deploy(self, deployment_uuid: str) -> dict[str, Any]:
-        """ Deploys deployment using deployment UUID. """
-        try:
-            _ = asyncio.get_running_loop()
-            return self._deploy(deployment_uuid)
-        except RuntimeError:
-            return asyncio.run(self._deploy(deployment_uuid))

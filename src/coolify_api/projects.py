@@ -1,118 +1,220 @@
-"""File: coolify_api/projects.py"""
-#   Copyright (c) 2024.
-#
-#   Proprietary License
-#
-#   management-tool License Agreement
-#
-#   Permission is hereby granted, to any person contracted with Rapid Dev Group to
-#   use this software and associated documentation files (the "Software"), to use
-#   the Software for personal and commercial purposes, subject to the following
-#   conditions:
-#
-#   1. Redistribution and use in source and binary forms, with or without
-#      modification, are not permitted.
-#   2. The Software shall be used for Good, not Evil.
-#
-#   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-#   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-#   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-#   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-#   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-#   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-#   SOFTWARE.
-#
-#   Contact: pn@goldeverywhere.com
-#
-import asyncio
-from logging import getLogger, DEBUG
-from typing import Optional, Any
+"""Coolify Projects API client.
 
-import _utils as utils
+This module provides methods to manage Coolify projects, including:
+- Listing all projects
+- Getting project details
+- Creating new projects
+- Updating existing projects
+- Deleting projects
+- Managing project environments
+
+Example:
+    ```python
+    from coolify_api import CoolifyAPIClient
+
+    client = CoolifyAPIClient()
+
+    # List all projects
+    projects = client.projects.list_all()
+
+    # Create a new project
+    new_project = client.projects.create({
+        "name": "My Project",
+        "description": "Project description"
+    })
+
+    # Get project details
+    project = client.projects.get("project-uuid")
+
+    # Update project
+    client.projects.update("project-uuid", {
+        "name": "Updated Name",
+        "description": "New description"
+    })
+
+    # Delete project
+    client.projects.delete("project-uuid")
+    ```
+"""
+
+from logging import getLogger, DEBUG
+from typing import Optional, Any, Coroutine, Dict, List
+
+from ._utils import create_data_with_kwargs
 from ._logging import _log_message
-from .url_utils import get, post, patch, delete
+from ._http_utils import HTTPUtils
 
 
 class CoolifyProjects:
+    """Manages Coolify projects.
 
-    def __init__(self, base_url: str, headers: dict) -> None:
-        self._base_url = base_url
-        self._headers = headers
+    This class provides methods to interact with projects in Coolify, including
+    creating, updating, and managing project environments.
+    """
+
+    def __init__(self, http_utils: HTTPUtils) -> None:
+        """Initialize the projects manager.
+
+        Args:
+            http_utils: HTTP client for making API requests
+        """
+        self._http_utils = http_utils
         self._logger = getLogger(__name__)
 
-    # LIST:
-    async def _list_all(self) -> list[dict[str, Any]]:
-        _log_message(self._logger, DEBUG, "Start to list all projects")
-        endpoint = "projects"
-        results = get(self._base_url, endpoint, self._headers)
-        _log_message(self._logger, DEBUG, "Finish listing all projects")
+    def list_all(self) -> List[Dict[str, Any]] | Coroutine[Any, Any, List[Dict[str, Any]]]:
+        """List all projects.
+
+        Returns:
+            List of project objects containing:
+            - id (int): Internal project ID
+            - uuid (str): Project UUID
+            - name (str): Project name
+            - description (str): Project description
+            - environments (List[Dict]): List of project environments containing:
+                - id (int): Environment ID
+                - name (str): Environment name
+                - project_id (int): Project ID
+                - created_at (str): Creation timestamp
+                - updated_at (str): Last update timestamp
+                - description (str): Environment description
+
+        Raises:
+            CoolifyError: For general API errors
+            CoolifyAuthenticationError: If authentication fails
+        """
+        message = "Start to list all projects"
+        _log_message(self._logger, DEBUG, message)
+        results = self._http_utils.get("projects")
+        message = "Finish listing all projects"
+        _log_message(self._logger, DEBUG, message, results)
         return results
 
-    def list_all(self) -> list[dict[str, Any]]:
-        try:
-            _ = asyncio.get_running_loop()
-            return self._list_all()
-        except RuntimeError:
-            return asyncio.run(self._list_all())
+    def get(self, project_uuid: str) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
+        """Get project details by UUID.
 
-    # GET:
-    async def _get(self, project_uuid: str) -> dict[str, Any]:
-        _log_message(self._logger, DEBUG, f"Start to get project with id: {project_uuid}")
-        endpoint = f"projects/{project_uuid}"
-        results = get(self._base_url, endpoint, self._headers)
-        _log_message(self._logger, DEBUG, f"Finish getting project with id: {project_uuid}")
+        Args:
+            project_uuid: UUID of the project to retrieve
+
+        Returns:
+            Project object containing full details (same structure as list_all)
+
+        Raises:
+            CoolifyError: For general API errors
+            CoolifyAuthenticationError: If authentication fails
+            CoolifyNotFoundError: If project UUID not found
+        """
+        message = f"Start to get project with uuid: {project_uuid}"
+        _log_message(self._logger, DEBUG, message)
+        results = self._http_utils.get(f"projects/{project_uuid}")
+        message = f"Finish getting project with uuid: {project_uuid}"
+        _log_message(self._logger, DEBUG, message, results)
         return results
 
-    def get(self, project_uuid: str) -> dict[str, Any]:
-        try:
-            _ = asyncio.get_running_loop()
-            return self._get(project_uuid)
-        except RuntimeError:
-            return asyncio.run(self._get(project_uuid))
+    def create(self, data: Dict[str, Any], **kwargs
+               ) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
+        """Create a new project.
 
-    # CREATE:
-    async def _create(self, data: dict[str, Any]) -> dict[str, Any]:
-        _log_message(self._logger, DEBUG, f"Start to create a new project")
-        endpoint = "projects"
-        results = post(self._base_url, endpoint, self._headers, data=data)
-        _log_message(self._logger, DEBUG, f"Finish creating a new project")
+        Args:
+            data: Project configuration containing:
+                - name (str, required): Project name
+                - description (str): Project description
+            **kwargs: Additional configuration options
+
+        Returns:
+            Dictionary containing:
+            - uuid (str): UUID of the created project
+
+        Raises:
+            CoolifyError: For general API errors
+            CoolifyAuthenticationError: If authentication fails
+            CoolifyValidationError: If required fields are missing
+        """
+        data = create_data_with_kwargs(data, **kwargs)
+        message = "Start to create a new project"
+        _log_message(self._logger, DEBUG, message, data)
+        results = self._http_utils.post("projects", data=data)
+        message = "Finish creating a new project"
+        _log_message(self._logger, DEBUG, message, results)
         return results
 
-    def create(self, data: Optional[dict[str, Any]], **kwargs) -> dict[str, Any]:
-        real_data = utils.create_data_with_kwargs(data, **kwargs)
-        try:
-            _ = asyncio.get_running_loop()
-            return self._create(real_data)
-        except RuntimeError:
-            return asyncio.run(self._create(real_data))
+    def update(self, project_uuid: str, data: Optional[Dict[str, Any]], **kwargs
+               ) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
+        """Update a project.
 
-    # UPDATE:
-    async def _update(self, project_uuid: str, data: Optional[dict[str, Any]]) -> dict[str, Any]:
-        _log_message(self._logger, DEBUG, f"Start to update project with id: {project_uuid}")
-        endpoint = f"projects/{project_uuid}"
-        results = patch(self._base_url, endpoint, self._headers, data=data)
-        _log_message(self._logger, DEBUG, f"Finish updating project with id: {project_uuid}")
+        Args:
+            project_uuid: UUID of the project to update
+            data: Updated project configuration containing:
+                - name (str): Project name
+                - description (str): Project description
+            **kwargs: Additional configuration options
+
+        Returns:
+            Dictionary containing:
+            - uuid (str): Project UUID
+            - name (str): Updated name
+            - description (str): Updated description
+
+        Raises:
+            CoolifyError: For general API errors
+            CoolifyAuthenticationError: If authentication fails
+            CoolifyNotFoundError: If project UUID not found
+            CoolifyValidationError: If validation fails
+        """
+        data = create_data_with_kwargs(data, **kwargs)
+        message = f"Start to update project with uuid: {project_uuid}"
+        _log_message(self._logger, DEBUG, message, data)
+        results = self._http_utils.patch(f"projects/{project_uuid}", data=data)
+        message = f"Finish updating project with uuid: {project_uuid}"
+        _log_message(self._logger, DEBUG, message, results)
         return results
 
-    def update(self, project_uuid: str, data: Optional[dict[str, Any]], **kwargs) -> dict[str, Any]:
-        real_data = utils.create_data_with_kwargs(data, **kwargs)
-        try:
-            _ = asyncio.get_running_loop()
-            return self._update(project_uuid, real_data)
-        except RuntimeError:
-            return asyncio.run(self._update(project_uuid, real_data))
+    def delete(self, project_uuid: str) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
+        """Delete a project.
 
-    # DELETE:
-    async def _delete(self, project_uuid: str) -> dict[str, Any]:
-        _log_message(self._logger, DEBUG, f"Start to delete project with id: {project_uuid}")
-        endpoint = f"projects/{project_uuid}"
-        results = delete(self._base_url, endpoint, self._headers)
-        _log_message(self._logger, DEBUG, f"Finish deleting project with id: {project_uuid}")
+        Args:
+            project_uuid: UUID of the project to delete
+
+        Returns:
+            Dictionary containing confirmation:
+            - message (str): "Project deleted."
+
+        Raises:
+            CoolifyError: For general API errors
+            CoolifyAuthenticationError: If authentication fails
+            CoolifyNotFoundError: If project UUID not found
+        """
+        message = f"Start to delete project with uuid: {project_uuid}"
+        _log_message(self._logger, DEBUG, message)
+        results = self._http_utils.delete(f"projects/{project_uuid}")
+        message = f"Finish deleting project with uuid: {project_uuid}"
+        _log_message(self._logger, DEBUG, message, results)
         return results
 
-    def delete(self, project_uuid: str) -> dict[str, Any]:
-        try:
-            _ = asyncio.get_running_loop()
-            return self._delete(project_uuid)
-        except RuntimeError:
-            return asyncio.run(self._delete(project_uuid))
+    def environment(self, project_uuid: str, environment_name: str
+                       ) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
+        """Get project environment by name.
+
+        Args:
+            project_uuid: UUID of the project
+            environment_name: Name of the environment to retrieve
+
+        Returns:
+            Environment object containing:
+            - id (int): Environment ID
+            - name (str): Environment name
+            - project_id (int): Project ID
+            - created_at (str): Creation timestamp
+            - updated_at (str): Last update timestamp
+            - description (str): Environment description
+
+        Raises:
+            CoolifyError: For general API errors
+            CoolifyAuthenticationError: If authentication fails
+            CoolifyNotFoundError: If project or environment not found
+        """
+        message = f"Start to get environment {environment_name} for project: {project_uuid}"
+        _log_message(self._logger, DEBUG, message)
+        results = self._http_utils.get(f"projects/{project_uuid}/{environment_name}")
+        message = f"Finish getting environment {environment_name}"
+        _log_message(self._logger, DEBUG, message, results)
+        return results

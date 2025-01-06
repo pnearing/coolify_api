@@ -1,194 +1,309 @@
-"""Filename: coolify_api/databases_create.py"""
-#   Copyright (c) 2024.
-#  #
-#   Proprietary License
-#  #
-#   management-tool License Agreement
-#  #
-#   Permission is hereby granted, to any person contracted with Rapid Dev Group to
-#   use this software and associated documentation files (the "Software"), to use
-#   the Software for personal and commercial purposes, subject to the following
-#   conditions:
-#  #
-#   1. Redistribution and use in source and binary forms, with or without
-#      modification, are not permitted.
-#   2. The Software shall be used for Good, not Evil.
-#  #
-#   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-#   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-#   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-#   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-#   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-#   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-#   SOFTWARE.
-#  #
-#   Contact: pn@goldeverywhere.com
-#
-import asyncio
-from logging import getLogger, DEBUG
-from typing import Optional, Any
+"""Database creation functionality for the Coolify API client.
 
+This module provides methods for creating different types of databases in Coolify, including:
+- PostgreSQL
+- Clickhouse
+- DragonFly
+- Redis
+- KeyDB
+- MariaDB
+- MySQL
+- MongoDB
+
+Example:
+    ```python
+    from coolify_api import CoolifyAPIClient
+
+    client = CoolifyAPIClient()
+
+    # Create PostgreSQL database
+    postgres_db = client.databases.create.postgresql({
+        "server_uuid": "srv-uuid",
+        "project_uuid": "proj-uuid",
+        "environment_name": "production",
+        "postgres_user": "admin",
+        "postgres_password": "secret"
+    })
+
+    # Create Redis database
+    redis_db = client.databases.create.redis({
+        "server_uuid": "srv-uuid",
+        "project_uuid": "proj-uuid",
+        "environment_name": "production",
+        "redis_password": "secret"
+    })
+    ```
+"""
+
+from logging import getLogger, DEBUG
+from typing import Any, Coroutine, Dict
 from ._logging import _log_message
-from .url_utils import post
-import _utils
+from ._http_utils import HTTPUtils
+from ._utils import create_data_with_kwargs
 
 
 class CoolifyDatabasesCreate:
-    """
-    Handles the creation of various types of databases using Coolify's API.
+    """Handles creation of different types of Coolify databases.
 
-    Provides methods to create PostgreSQL, MySQL, MongoDB, and Redis databases.
-    Utilizes asynchronous HTTP calls to interact with Coolify's API and offers
-    a structured way to handle database creation with optional data input
-    and logging support.
-
-    :ivar _base_url: Base URL used for API communication.
-    :type _base_url: str
-    :ivar _headers: Headers used for API requests.
-    :type _headers: dict
-    :ivar _logger: Logger instance for recording debug information.
-    :type _logger: logging.Logger
+    This class provides methods for creating various database types supported by Coolify.
+    Each method handles the specific configuration required for that database type.
     """
-    def __init__(self, base_url: str, headers: dict) -> None:
-        self._base_url = base_url
-        """Base URL for the class."""
-        self._headers = headers
-        """Headers for the class."""
+
+    def __init__(self, http_utils: HTTPUtils) -> None:
+        """Initialize the database creation manager.
+
+        Args:
+            http_utils: HTTP client for making API requests
+        """
+        self._http_utils = http_utils
         self._logger = getLogger(__name__)
-        """Logger for the class."""
 
-    ###############
-    # PostgreSQL Database
-    async def _postgresql(self, data: dict[str, Any]) -> dict[str, Any]:
+    def postgresql(self, server_uuid: str, project_uuid: str, environment_name: str,
+                   data: Dict[str, Any] = None, **kwargs) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
+        """Create a PostgreSQL database.
+
+        Args:
+            server_uuid: UUID of the server to deploy the database on
+            project_uuid: UUID of the project to create the database in
+            environment_name: Name of the environment (e.g., "production")
+            data: Additional database configuration containing:
+                - postgres_user (str): PostgreSQL user
+                - postgres_password (str): PostgreSQL password
+                - postgres_db (str): PostgreSQL database name
+                - postgres_initdb_args (str): PostgreSQL initdb args
+                - postgres_host_auth_method (str): PostgreSQL host auth method
+                - postgres_conf (str): PostgreSQL configuration
+            **kwargs: Additional configuration options including:
+                - name (str): Database name
+                - description (str): Database description
+                - image (str): Docker image
+                - is_public (bool): Public accessibility
+                - public_port (int): Public port number
+                - limits_memory (str): Memory limit
+                - limits_cpus (str): CPU limit
+                - instant_deploy (bool): Deploy immediately
+
+        Returns:
+            Dictionary containing the created database details
+
+        Raises:
+            CoolifyError: For general API errors
+            CoolifyAuthenticationError: If authentication fails
+        """
+        base_data = {
+            "server_uuid": server_uuid,
+            "project_uuid": project_uuid,
+            "environment_name": environment_name
+        }
+        data = create_data_with_kwargs(data or {}, **base_data, **kwargs)
         _log_message(self._logger, DEBUG, "Start to create a PostgreSQL database.", data)
-        endpoint = "databases/postgresql"
-        results = post(self._base_url, endpoint, self._headers, data=data)
-        _log_message(self._logger, DEBUG, "Finish creating a PostgreSQL database")
+        results = self._http_utils.post("databases/postgresql", data=data)
+        _log_message(self._logger, DEBUG, "Finish creating a PostgreSQL database", results)
         return results
 
-    def postgresql(self, data: Optional[dict[str, Any]] = None, **kwargs) -> dict[str, Any]:
-        real_data = utils.create_data_with_kwargs(data, **kwargs)
-        try:
-            _ = asyncio.get_running_loop()
-            return self._postgresql(real_data)
-        except RuntimeError:
-            return asyncio.run(self._postgresql(real_data))
+    def clickhouse(self, server_uuid: str, project_uuid: str, environment_name: str,
+                   clickhouse_admin_user: str = None, clickhouse_admin_password: str = None,
+                   data: Dict[str, Any] = None, **kwargs) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
+        """Create a Clickhouse database.
 
-    ###############
-    # Clickhouse Database:
-    async def _clickhouse(self, data: dict[str, Any]) -> dict[str, Any]:
+        Args:
+            server_uuid: UUID of the server to deploy the database on
+            project_uuid: UUID of the project to create the database in
+            environment_name: Name of the environment (e.g., "production")
+            clickhouse_admin_user: Clickhouse admin username
+            clickhouse_admin_password: Clickhouse admin password
+            data: Additional database configuration
+            **kwargs: Additional configuration options
+
+        Returns:
+            Dictionary containing the created database details
+        """
+        base_data = {
+            "server_uuid": server_uuid,
+            "project_uuid": project_uuid,
+            "environment_name": environment_name
+        }
+        if clickhouse_admin_user:
+            base_data["clickhouse_admin_user"] = clickhouse_admin_user
+        if clickhouse_admin_password:
+            base_data["clickhouse_admin_password"] = clickhouse_admin_password
+        data = create_data_with_kwargs(data or {}, **base_data, **kwargs)
         _log_message(self._logger, DEBUG, "Start to create a ClickHouse database.", data)
-        endpoint = "databases/clickhouse"
-        results = post(self._base_url, endpoint, self._headers, data=data)
+        results = self._http_utils.post("databases/clickhouse", data=data)
         _log_message(self._logger, DEBUG, "Finish creating a ClickHouse database")
         return results
 
-    def clickhouse(self, data: Optional[dict[str, Any]] = None, **kwargs) -> dict[str, Any]:
-        real_data = utils.create_data_with_kwargs(data, **kwargs)
-        try:
-            _ = asyncio.get_running_loop()
-            return self._clickhouse(real_data)
-        except RuntimeError:
-            return asyncio.run(self._clickhouse(real_data))
+    def dragonfly(self, server_uuid: str, project_uuid: str, environment_name: str,
+                  dragonfly_password: str = None, data: Dict[str, Any] = None, **kwargs
+                  ) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
+        """Create a DragonFly database.
 
-    ########################
-    # DragonFly Database:
-    async def _dragonfly(self, data: dict[str, Any]) -> dict[str, Any]:
+        Args:
+            server_uuid: UUID of the server to deploy the database on
+            project_uuid: UUID of the project to create the database in
+            environment_name: Name of the environment (e.g., "production")
+            dragonfly_password: DragonFly password
+            data: Additional database configuration
+            **kwargs: Additional configuration options
+
+        Returns:
+            Dictionary containing the created database details
+        """
+        base_data = {
+            "server_uuid": server_uuid,
+            "project_uuid": project_uuid,
+            "environment_name": environment_name
+        }
+        if dragonfly_password:
+            base_data["dragonfly_password"] = dragonfly_password
+        data = create_data_with_kwargs(data or {}, **base_data, **kwargs)
         _log_message(self._logger, DEBUG, "Start to create a DragonFly database.", data)
-        endpoint = "databases/dragonfly"
-        results = post(self._base_url, endpoint, self._headers, data=data)
+        results = self._http_utils.post("databases/dragonfly", data=data)
         _log_message(self._logger, DEBUG, "Finish creating a DragonFly database")
         return results
 
-    def dragonfly(self, data: Optional[dict[str, Any]] = None, **kwargs) -> dict[str, Any]:
-        real_data = utils.create_data_with_kwargs(data, **kwargs)
-        try:
-            _ = asyncio.get_running_loop()
-            return self._dragonfly(real_data)
-        except RuntimeError:
-            return asyncio.run(self._dragonfly(real_data))
+    def redis(self, server_uuid: str, project_uuid: str, environment_name: str,
+              redis_password: str = None, data: Dict[str, Any] = None, **kwargs
+              ) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
+        """Create a Redis database.
 
-    ###############
-    # Redis Database
-    async def _redis(self, data: dict[str, Any]) -> dict[str, Any]:
+        Args:
+            server_uuid: UUID of the server to deploy the database on
+            project_uuid: UUID of the project to create the database in
+            environment_name: Name of the environment (e.g., "production")
+            redis_password: Redis password (recommended)
+            data: Additional database configuration containing:
+                - redis_conf (str): Redis configuration
+            **kwargs: Additional configuration options
+
+        Returns:
+            Dictionary containing the created database details
+        """
+        base_data = {
+            "server_uuid": server_uuid,
+            "project_uuid": project_uuid,
+            "environment_name": environment_name
+        }
+        if redis_password:
+            base_data["redis_password"] = redis_password
+        data = create_data_with_kwargs(data or {}, **base_data, **kwargs)
         _log_message(self._logger, DEBUG, "Start to create a Redis database.", data)
-        endpoint = "databases/redis"
-        results = post(self._base_url, endpoint, self._headers, data=data)
+        results = self._http_utils.post("databases/redis", data=data)
         _log_message(self._logger, DEBUG, "Finish creating a Redis database")
         return results
 
-    def redis(self, data: Optional[dict[str, Any]] = None, **kwargs) -> dict[str, Any]:
-        real_data = utils.create_data_with_kwargs(data, **kwargs)
-        try:
-            _ = asyncio.get_running_loop()
-            return self._redis(real_data)
-        except RuntimeError:
-            return asyncio.run(self._redis(real_data))
+    def keydb(self, server_uuid: str, project_uuid: str, environment_name: str,
+              keydb_password: str = None, data: Dict[str, Any] = None, **kwargs
+              ) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
+        """Create a KeyDB database.
 
-    #################
-    # KeyDB Database:
-    async def _keydb(self, data: dict[str, Any]) -> dict[str, Any]:
+        Args:
+            server_uuid: UUID of the server to deploy the database on
+            project_uuid: UUID of the project to create the database in
+            environment_name: Name of the environment (e.g., "production")
+            keydb_password: KeyDB password
+            data: Additional database configuration containing:
+                - keydb_conf (str): KeyDB configuration
+            **kwargs: Additional configuration options
+
+        Returns:
+            Dictionary containing the created database details
+        """
+        base_data = {
+            "server_uuid": server_uuid,
+            "project_uuid": project_uuid,
+            "environment_name": environment_name
+        }
+        if keydb_password:
+            base_data["keydb_password"] = keydb_password
+        data = create_data_with_kwargs(data or {}, **base_data, **kwargs)
         _log_message(self._logger, DEBUG, "Start to create a KeyDB database.", data)
-        endpoint = "databases/keydb"
-        results = post(self._base_url, endpoint, self._headers, data=data)
+        results = self._http_utils.post("databases/keydb", data=data)
         _log_message(self._logger, DEBUG, "Finish creating a KeyDB database")
         return results
 
-    def keydb(self, data: Optional[dict[str, Any]] = None, **kwargs) -> dict[str, Any]:
-        real_data = utils.create_data_with_kwargs(data, **kwargs)
-        try:
-            _ = asyncio.get_running_loop()
-            return self._keydb(real_data)
-        except RuntimeError:
-            return asyncio.run(self._keydb(real_data))
+    def mariadb(self, server_uuid: str, project_uuid: str, environment_name: str,
+                mariadb_root_password: str = None, mariadb_user: str = None,
+                mariadb_password: str = None, mariadb_database: str = None,
+                data: Dict[str, Any] = None, **kwargs) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
+        """Create a MariaDB database.
 
-    #####################
-    # MariaDB Database:
-    async def _mariadb(self, data: dict[str, Any]) -> dict[str, Any]:
+        Args:
+            server_uuid: UUID of the server to deploy the database on
+            project_uuid: UUID of the project to create the database in
+            environment_name: Name of the environment (e.g., "production")
+            mariadb_root_password: MariaDB root password
+            mariadb_user: MariaDB user
+            mariadb_password: MariaDB password
+            mariadb_database: MariaDB database name
+            data: Additional database configuration containing:
+                - mariadb_conf (str): MariaDB configuration
+            **kwargs: Additional configuration options
+
+        Returns:
+            Dictionary containing the created database details
+        """
+        base_data = {
+            "server_uuid": server_uuid,
+            "project_uuid": project_uuid,
+            "environment_name": environment_name
+        }
+        if mariadb_root_password:
+            base_data["mariadb_root_password"] = mariadb_root_password
+        if mariadb_user:
+            base_data["mariadb_user"] = mariadb_user
+        if mariadb_password:
+            base_data["mariadb_password"] = mariadb_password
+        if mariadb_database:
+            base_data["mariadb_database"] = mariadb_database
+        data = create_data_with_kwargs(data or {}, **base_data, **kwargs)
         _log_message(self._logger, DEBUG, "Start to create a MariaDB database.", data)
-        endpoint = "databases/mariadb"
-        results = post(self._base_url, endpoint, self._headers, data=data)
+        results = self._http_utils.post("databases/mariadb", data=data)
         _log_message(self._logger, DEBUG, "Finish creating a MariaDB database")
         return results
 
-    def mariadb(self, data: Optional[dict[str, Any]] = None, **kwargs) -> dict[str, Any]:
-        real_data = utils.create_data_with_kwargs(data, **kwargs)
-        try:
-            _ = asyncio.get_running_loop()
-            return self._mariadb(real_data)
-        except RuntimeError:
-            return asyncio.run(self._mariadb(real_data))
+    def mysql(self, data: Dict[str, Any], **kwargs
+             ) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
+        """Create a MySQL database.
 
-    ###############
-    # MySQL Database
-    async def _mysql(self, data: dict[str, Any]) -> dict[str, Any]:
+        Args:
+            data: Database configuration containing:
+                - server_uuid (str, required): UUID of the server
+                - project_uuid (str, required): UUID of the project
+                - environment_name (str, required): Name of the environment
+                - mysql_root_password (str): MySQL root password
+                - mysql_user (str): MySQL user
+                - mysql_database (str): MySQL database name
+                - mysql_conf (str): MySQL configuration
+            **kwargs: Additional configuration options
+
+        Returns:
+            Dictionary containing the created database details
+        """
+        data = create_data_with_kwargs(data, **kwargs)
         _log_message(self._logger, DEBUG, "Start to create a MySQL database.", data)
-        endpoint = "databases/mysql"
-        results = post(self._base_url, endpoint, self._headers, data=data)
+        results = self._http_utils.post("databases/mysql", data=data)
         _log_message(self._logger, DEBUG, "Finish creating a MySQL database")
         return results
 
-    def mysql(self, data: Optional[dict[str, Any]] = None, **kwargs) -> dict[str, Any]:
-        real_data = utils.create_data_with_kwargs(data, **kwargs)
-        try:
-            _ = asyncio.get_running_loop()
-            return self._mysql(real_data)
-        except RuntimeError:
-            return asyncio.run(self._mysql(real_data))
+    def mongodb(self, data: Dict[str, Any], **kwargs
+               ) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
+        """Create a MongoDB database.
 
-    ###############
-    # MongoDB Database
-    async def _mongodb(self, data: dict[str, Any]) -> dict[str, Any]:
+        Args:
+            data: Database configuration containing:
+                - server_uuid (str, required): UUID of the server
+                - project_uuid (str, required): UUID of the project
+                - environment_name (str, required): Name of the environment
+                - mongo_conf (str): MongoDB configuration
+                - mongo_initdb_root_username (str): MongoDB root username
+            **kwargs: Additional configuration options
+
+        Returns:
+            Dictionary containing the created database details
+        """
+        data = create_data_with_kwargs(data, **kwargs)
         _log_message(self._logger, DEBUG, "Start to create a MongoDB database.", data)
-        endpoint = "databases/mongodb"
-        results = post(self._base_url, endpoint, self._headers, data=data)
+        results = self._http_utils.post("databases/mongodb", data=data)
         _log_message(self._logger, DEBUG, "Finish creating a MongoDB database")
         return results
-
-    def mongodb(self, data: Optional[dict[str, Any]] = None, **kwargs) -> dict[str, Any]:
-        real_data = utils.create_data_with_kwargs(data, **kwargs)
-        try:
-            _ = asyncio.get_running_loop()
-            return self._mongodb(real_data)
-        except RuntimeError:
-            return asyncio.run(self._mongodb(real_data))

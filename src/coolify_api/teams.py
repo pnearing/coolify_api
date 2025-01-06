@@ -1,110 +1,164 @@
-"""File: coolify_api/teams.py"""
-#   Copyright (c) 2024.
-#  #
-#   Proprietary License
-#  #
-#   management-tool License Agreement
-#  #
-#   Permission is hereby granted, to any person contracted with Rapid Dev Group to
-#   use this software and associated documentation files (the "Software"), to use
-#   the Software for personal and commercial purposes, subject to the following
-#   conditions:
-#  #
-#   1. Redistribution and use in source and binary forms, with or without
-#      modification, are not permitted.
-#   2. The Software shall be used for Good, not Evil.
-#  #
-#   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-#   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-#   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-#   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-#   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-#   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-#   SOFTWARE.
-#  #
-#   Contact: pn@goldeverywhere.com
-#
-import asyncio
-from logging import getLogger, DEBUG
-from typing import Any
+"""Coolify Teams API client.
 
-from _logging import _log_message
-from url_utils import get
+This module provides methods to manage Coolify teams, including:
+- Listing all teams
+- Getting team details
+- Managing team members
+- Getting current team information
+
+Example:
+    ```python
+    from coolify_api import CoolifyAPIClient
+
+    client = CoolifyAPIClient()
+
+    # List all teams
+    teams = client.teams.list_all()
+
+    # Get team details
+    team = client.teams.get("team-id")
+
+    # Get team members
+    members = client.teams.team_members("team-id")
+
+    # Get current team
+    current = client.teams.current_team()
+    current_members = client.teams.current_team_members()
+    ```
+"""
+
+from logging import getLogger, DEBUG
+from typing import Any, Coroutine, Dict, List
+
+from ._logging import _log_message
+from ._http_utils import HTTPUtils
 
 
 class CoolifyTeams:
-    _logger = getLogger(__name__)
+    """Manages Coolify teams.
 
-    def __init__(self, base_url: str, headers: dict[str, str]) -> None:
-        self._base_url: str = base_url
-        self._headers: dict[str, str] = headers
+    This class provides methods to interact with teams in Coolify, including
+    team management and member operations.
+    """
 
-    async def _list_all(self) -> list[dict[str, Any]]:
-        _log_message(self._logger, DEBUG, "Start listing all teams")
-        endpoint = "teams"
-        results = await get(self._base_url, endpoint, self._headers)
-        _log_message(self._logger, DEBUG, "Finish listing all teams")
+    def __init__(self, http_utils: HTTPUtils) -> None:
+        """Initialize the teams manager.
+
+        Args:
+            http_utils: HTTP client for making API requests
+        """
+        self._http_utils = http_utils
+        self._logger = getLogger(__name__)
+
+    def list_all(self) -> List[Dict[str, Any]] | Coroutine[Any, Any, List[Dict[str, Any]]]:
+        """List all teams.
+
+        Returns:
+            List of team objects containing:
+            - id (int): Team ID
+            - name (str): Team name
+            - description (str): Team description
+            - personal_team (bool): Whether team is personal
+            - created_at (str): Creation timestamp
+            - updated_at (str): Last update timestamp
+            - smtp_enabled (bool): SMTP notification status
+            - discord_enabled (bool): Discord notification status
+            - telegram_enabled (bool): Telegram notification status
+            And many other notification configuration fields
+
+        Raises:
+            CoolifyError: For general API errors
+            CoolifyAuthenticationError: If authentication fails
+        """
+        message = "Start to list all teams"
+        _log_message(self._logger, DEBUG, message)
+        results = self._http_utils.get("teams")
+        message = "Finish listing all teams"
+        _log_message(self._logger, DEBUG, message, results)
         return results
 
-    def list_all(self) -> list[dict[str, Any]]:
-        try:
-            _ = asyncio.get_running_loop()
-            return self._list_all()
-        except RuntimeError:
-            return asyncio.run(self._list_all())
+    def get(self, team_id: str) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
+        """Get team details by ID.
 
-    async def _get(self, team_id: str) -> dict[str, Any]:
-        _log_message(self._logger, DEBUG, f"Start getting team with id: {team_id}")
-        endpoint = f"teams/{team_id}"
-        results = await get(self._base_url, endpoint, self._headers)
-        _log_message(self._logger, DEBUG, f"Finish getting team with id: {team_id}")
+        Args:
+            team_id: ID of the team to retrieve
+
+        Returns:
+            Team object containing same fields as list_all()
+
+        Raises:
+            CoolifyError: For general API errors
+            CoolifyAuthenticationError: If authentication fails
+            CoolifyNotFoundError: If team ID not found
+        """
+        message = f"Start to get team with id: {team_id}"
+        _log_message(self._logger, DEBUG, message)
+        results = self._http_utils.get(f"teams/{team_id}")
+        message = f"Finish getting team with id: {team_id}"
+        _log_message(self._logger, DEBUG, message, results)
         return results
 
-    def get(self, team_id: str) -> dict[str, Any]:
-        try:
-            _ = asyncio.get_running_loop()
-            return self._get(team_id)
-        except RuntimeError:
-            return asyncio.run(self._get(team_id))
+    def team_members(self, team_id: str
+                    ) -> List[Dict[str, Any]] | Coroutine[Any, Any, List[Dict[str, Any]]]:
+        """Get team members by team ID.
 
-    async def _get_team_members(self, team_id: str) -> list[dict[str, Any]]:
-        _log_message(self._logger, DEBUG, f"Start getting members for team with id: {team_id}")
-        endpoint = f"teams/{team_id}/members"
-        results = await get(self._base_url, endpoint, self._headers)
-        _log_message(self._logger, DEBUG, f"Finish getting members for team with id: {team_id}")
+        Args:
+            team_id: ID of the team
+
+        Returns:
+            List of user objects containing:
+            - id (int): User ID
+            - name (str): User name
+            - email (str): User email
+            - email_verified_at (str): Email verification timestamp
+            - created_at (str): Creation timestamp
+            - updated_at (str): Last update timestamp
+            - two_factor_confirmed_at (str): 2FA confirmation timestamp
+            - force_password_reset (bool): Password reset flag
+            - marketing_emails (bool): Marketing email preference
+
+        Raises:
+            CoolifyError: For general API errors
+            CoolifyAuthenticationError: If authentication fails
+            CoolifyNotFoundError: If team ID not found
+        """
+        message = f"Start getting members for team with id: {team_id}"
+        _log_message(self._logger, DEBUG, message)
+        results = self._http_utils.get(f"teams/{team_id}/members")
+        message = f"Finish getting members for team with id: {team_id}"
+        _log_message(self._logger, DEBUG, message, results)
         return results
 
-    def get_team_members(self, team_id: str) -> list[dict[str, Any]]:
-        try:
-            _ = asyncio.get_running_loop()
-            return self._get_team_members(team_id)
-        except RuntimeError:
-            return asyncio.run(self._get_team_members(team_id))
+    def current_team(self) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
+        """Get currently authenticated team.
 
-    async def _get_current_team(self) -> dict[str, Any]:
-        _log_message(self._logger, DEBUG, "Start getting current team")
-        endpoint = "teams/current"
-        results = await get(self._base_url, endpoint, self._headers)
-        _log_message(self._logger, DEBUG, "Finish getting current team")
+        Returns:
+            Team object containing same fields as list_all()
+
+        Raises:
+            CoolifyError: For general API errors
+            CoolifyAuthenticationError: If authentication fails
+        """
+        message = "Start to get current team"
+        _log_message(self._logger, DEBUG, message)
+        results = self._http_utils.get("teams/current")
+        message = "Finish getting current team"
+        _log_message(self._logger, DEBUG, message, results)
         return results
 
-    def get_current_team(self) -> dict[str, Any]:
-        try:
-            _ = asyncio.get_running_loop()
-            return self._get_current_team()
-        except RuntimeError:
-            return asyncio.run(self._get_current_team())
+    def current_members(self) -> List[Dict[str, Any]] | Coroutine[Any, Any, List[Dict[str, Any]]]:
+        """Get members of currently authenticated team.
 
-    async def _get_current_team_members(self) -> list[dict[str, Any]]:
-        _log_message(self._logger, DEBUG, "Start getting members of the current team")
-        endpoint = "teams/current/members"
-        results = await get(self._base_url, endpoint, self._headers)
-        _log_message(self._logger, DEBUG, "Finish getting members of the current team")
+        Returns:
+            List of user objects containing same fields as team_members()
+
+        Raises:
+            CoolifyError: For general API errors
+            CoolifyAuthenticationError: If authentication fails
+        """
+        message = "Start getting members of the current team"
+        _log_message(self._logger, DEBUG, message)
+        results = self._http_utils.get("teams/current/members")
+        message = "Finish getting members of the current team"
+        _log_message(self._logger, DEBUG, message, results)
         return results
-
-    def get_current_team_members(self) -> list[dict[str, Any]]:
-        try:
-            _ = asyncio.get_running_loop()
-            return self._get_current_team_members()
-        except RuntimeError:
-            return asyncio.run(self._get_current_team_members())

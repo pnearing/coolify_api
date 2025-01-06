@@ -1,29 +1,42 @@
-#  Copyright (c) 2024.
-#
-#  Proprietary License
-#
-#  management-tool License Agreement
-#
-#  Permission is hereby granted, to any person contracted with Rapid Dev Group to
-#  use this software and associated documentation files (the "Software"), to use
-#  the Software for personal and commercial purposes, subject to the following
-#  conditions:
-#
-#  1. Redistribution and use in source and binary forms, with or without
-#     modification, are not permitted.
-#  2. The Software shall be used for Good, not Evil.
-#
-#  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-#  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-#  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-#  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-#  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-#  SOFTWARE.
-#
-#  Contact: pn@goldeverywhere.com
-from typing import Optional
+"""Coolify API Client Library.
 
+This package provides a Python interface for interacting with the Coolify API. It enables management 
+of Coolify resources including applications, databases, services, and deployments through a simple 
+and intuitive API client.
+
+Example:
+    Basic usage of the Coolify API client:
+
+    ```python
+    from coolify_api import CoolifyAPIClient
+
+    # Initialize the client
+    client = CoolifyAPIClient(
+        base_url="https://coolify.example.com", # Or use environment variable COOLIFY_BASE_URL
+        api_key="your-api-key" # Or use environment variable COOLIFY_API_KEY
+
+    )
+
+    # Get application details
+    app = client.applications.get("app-id")
+    ```
+
+Attributes:
+    CoolifyAPIClient: The main client class for interacting with the Coolify API.
+
+License:
+    Proprietary - All rights reserved
+    See LICENSE file for full terms.
+
+Author:
+    Peter Nearing <pn@goldeverywhere.com>
+"""
 
 from .api_client import CoolifyAPIClient
+
+__version__ = "0.1.0"
+__author__ = "Peter Nearing"
+__email__ = "pn@goldeverywhere.com"
+
+__all__ = ["CoolifyAPIClient"]
 

@@ -1,97 +1,115 @@
-"""File: coolify_api/operations.py"""
-#   Copyright (c) 2024.
-#  #
-#   Proprietary License
-#  #
-#   management-tool License Agreement
-#  #
-#   Permission is hereby granted, to any person contracted with Rapid Dev Group to
-#   use this software and associated documentation files (the "Software"), to use
-#   the Software for personal and commercial purposes, subject to the following
-#   conditions:
-#  #
-#   1. Redistribution and use in source and binary forms, with or without
-#      modification, are not permitted.
-#   2. The Software shall be used for Good, not Evil.
-#  #
-#   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-#   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-#   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-#   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-#   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-#   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-#   SOFTWARE.
-#  #
-#   Contact: pn@goldeverywhere.com
-#
+"""Coolify Operations API client.
 
+This module provides methods for core Coolify operations, including:
+- Getting Coolify version
+- Enabling/disabling the API
+- Health checks
 
-import asyncio
+Example:
+    ```python
+    from coolify_api import CoolifyAPIClient
+
+    client = CoolifyAPIClient()
+
+    # Get Coolify version
+    version = client.operations.get_version()  # Returns e.g. "v4.0.0"
+
+    # Enable/disable API (requires root permissions)
+    client.operations.enable_api()
+    client.operations.disable_api()
+
+    # Check system health
+    status = client.operations.health_check()  # Returns "OK" if healthy
+    ```
+"""
+
 from logging import getLogger, DEBUG
-from typing import Any
+from typing import Any, Coroutine, Dict
+
 from ._logging import _log_message
-from .url_utils import get
+from ._http_utils import HTTPUtils
 
 
 class CoolifyOperations:
-    _logger = getLogger(__name__)
+    """Manages core Coolify operations.
 
-    def __init__(self, base_url: str, headers: dict[str, str]) -> None:
-        self._base_url: str = base_url
-        self._headers: dict[str, str] = headers
+    This class provides methods for system-level operations like version checks,
+    API management, and health monitoring.
+    """
 
-    async def _get_version(self) -> str:
+    def __init__(self, http_utils: HTTPUtils) -> None:
+        """Initialize the operations manager.
+
+        Args:
+            http_utils: HTTP client for making API requests
+        """
+        self._http_utils = http_utils
+        self._logger = getLogger(__name__)
+
+    def get_version(self) -> str | Coroutine[Any, Any, str]:
+        """Get Coolify version.
+
+        Returns:
+            String containing version number (e.g., "v4.0.0")
+
+        Raises:
+            CoolifyError: For general API errors
+            CoolifyAuthenticationError: If authentication fails
+        """
         _log_message(self._logger, DEBUG, "Start getting version")
-        endpoint = "version"
-        results = await get(self._base_url, endpoint, self._headers)
-        _log_message(self._logger, DEBUG, "Finish getting version")
+        results = self._http_utils.get("version")
+        _log_message(self._logger, DEBUG, "Finish getting version", results)
         return results
 
-    def get_version(self) -> str:
-        try:
-            _ = asyncio.get_running_loop()
-            return self._get_version()
-        except RuntimeError:
-            return asyncio.run(self._get_version())
+    def enable_api(self) -> Dict[str, str] | Coroutine[Any, Any, Dict[str, str]]:
+        """Enable the Coolify API.
 
-    async def _enable_api(self) -> dict[str, Any]:
+        This operation requires root permissions.
+
+        Returns:
+            Dictionary containing confirmation:
+            - message (str): "API enabled."
+
+        Raises:
+            CoolifyError: For general API errors
+            CoolifyAuthenticationError: If authentication fails
+            CoolifyPermissionError: If user lacks root permissions
+        """
         _log_message(self._logger, DEBUG, "Start enabling API")
-        endpoint = "operations/enable-api"
-        results = await get(self._base_url, endpoint, self._headers)
-        _log_message(self._logger, DEBUG, "Finish enabling API")
+        results = self._http_utils.get("enable")
+        _log_message(self._logger, DEBUG, "Finish enabling API", results)
         return results
 
-    def enable_api(self) -> dict[str, Any]:
-        try:
-            _ = asyncio.get_running_loop()
-            return self._enable_api()
-        except RuntimeError:
-            return asyncio.run(self._enable_api())
+    def disable_api(self) -> Dict[str, str] | Coroutine[Any, Any, Dict[str, str]]:
+        """Disable the Coolify API.
 
-    async def _disable_api(self) -> dict[str, Any]:
+        This operation requires root permissions.
+
+        Returns:
+            Dictionary containing confirmation:
+            - message (str): "API disabled."
+
+        Raises:
+            CoolifyError: For general API errors
+            CoolifyAuthenticationError: If authentication fails
+            CoolifyPermissionError: If user lacks root permissions
+        """
         _log_message(self._logger, DEBUG, "Start disabling API")
-        endpoint = "operations/disable-api"
-        results = await get(self._base_url, endpoint, self._headers)
-        _log_message(self._logger, DEBUG, "Finish disabling API")
+        results = self._http_utils.get("disable")
+        _log_message(self._logger, DEBUG, "Finish disabling API", results)
         return results
 
-    def disable_api(self) -> dict[str, Any]:
-        try:
-            _ = asyncio.get_running_loop()
-            return self._disable_api()
-        except RuntimeError:
-            return asyncio.run(self._disable_api())
+    def health_check(self) -> str | Coroutine[Any, Any, str]:
+        """Check system health.
 
-    async def _health_check(self) -> str:
+        Returns:
+            String "OK" if system is healthy
+
+        Raises:
+            CoolifyError: For general API errors
+            CoolifyAuthenticationError: If authentication fails
+        """
         _log_message(self._logger, DEBUG, "Start health check")
-        endpoint = "operations/healthcheck"
-        results = await get(self._base_url, endpoint, self._headers)
-        _log_message(self._logger, DEBUG, "Finish health check")
+        results = self._http_utils.get("health")
+        _log_message(self._logger, DEBUG, "Finish health check", results)
         return results
-
-    def health_check(self) -> str:
-        try:
-            _ = asyncio.get_running_loop()
-            return self._health_check()
-        except RuntimeError:
-            return asyncio.run(self._health_check())
