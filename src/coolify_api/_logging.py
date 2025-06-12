@@ -7,7 +7,7 @@ based on environment configuration.
 Environment Variables:
     OUTPUT_IS_SHY (str): Controls whether sensitive data is hidden in logs.
         Set to "false" to show hidden information. Accepts various truthy/falsy values:
-        - True values: "true", "1", "t", "yes", "y", "yup", "sure", "ok", "yep", "yeah", "shy"
+        - True values: "true", "1", "t", "yes", "y", "yup", "sure", "ok", "yep", "yeah", "shy", "on"
         - Any other value is considered False
 
 Example:
@@ -30,7 +30,7 @@ from typing import Any
 from logging import Logger
 
 OUTPUT_IS_SHY = os.getenv("OUTPUT_IS_SHY", "true").lower() in ("true", "1", "t", "yes", "y", "yup",
-                                                              "sure", "ok", "yep", "yeah", "shy")
+                                                              "sure", "ok", "yep", "yeah", "shy", "on")
 """bool: Global flag controlling visibility of sensitive data in logs."""
 
 

@@ -1,6 +1,6 @@
+# Coolify API
 
-## This is my implementation of the Coolify api.
-
+## This is my implementation of the Coolify api
 
 The `CoolifyAPIClient` is a Python class defined in the `api_client.py` module of the `coolify_api` package. It serves as the main interface between the user and the Coolify API, providing organized access to various features of the API. The class uses an API key and base URL, typically fed from environment variables, to handle authentication with the API.
 
@@ -8,7 +8,8 @@ Upon initialization, it creates instances of multiple specialized classes, each 
 
 The `CoolifyAPIClient` class provides an effective way to interact with the Coolify API. It handles the API key and base URL and provides Pythonic methods corresponding to various Coolify API endpoints.
 Here is how you could instantiate the `CoolifyAPIClient` class and use its methods:
-```
+
+```python
 # Import the CoolifyAPIClient
 from coolify_api import CoolifyAPIClient
 # Instantiate the class using appropriate credentials
