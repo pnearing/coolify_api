@@ -126,29 +126,57 @@ class CoolifyValidationError(CoolifyError):
         message: Formatted error description with validation details
         response: Full API response for additional error context
     """
-    def __init__(self, response: Response | ClientResponse, *args, **kwargs):
-        """Initialize validation error.
-
-        Parses the API response to create a detailed error message that includes
-        all validation failures.
-
-        Args:
-            response: HTTP response containing validation errors
-            *args: Additional positional arguments
-            **kwargs: Additional keyword arguments
+    def __init__(self, message: str, *args, response=None, **kwargs):
         """
-        error_data = response.json()
+        Initialize validation error with a pre-built message.
+        Use the async classmethod 'from_response' to construct this exception from an HTTP response.
+        """
+        super().__init__(message, *args, response=response, **kwargs)
+
+    @classmethod
+    async def from_response(cls, response: Response | ClientResponse, *args, **kwargs):
+        """
+        Asynchronously create a CoolifyValidationError from a response object.
+        Use this in async code to ensure coroutines are awaited.
+        """
+        import inspect
+        if hasattr(response, "json") and inspect.iscoroutinefunction(response.json):
+            error_data = await response.json()
+        else:
+            error_data = response.json()
         message = "Coolify Validation Error:"
         if isinstance(error_data, dict):
-            message += f" {error_data['message']}"
-            if isinstance(error_data['errors'], list):
+            message += f" {error_data.get('message', '')}"
+            if isinstance(error_data.get('errors'), list):
                 message = ", ".join(error_data['errors'])
-            elif isinstance(error_data['errors'], str):
+            elif isinstance(error_data.get('errors'), str):
                 message = error_data['errors']
-            elif isinstance(error_data['errors'], dict):
+            elif isinstance(error_data.get('errors'), dict):
                 for key, value in error_data['errors'].items():
                     message += f"\n\t{key}: {value}"
         elif isinstance(error_data, list):
             for item in error_data:
                 message += f"\n\t{item}"
-        super().__init__(message, *args, response=response, **kwargs)
+        return cls(message, *args, response=response, **kwargs)
+
+    @classmethod
+    def from_response_sync(cls, response: Response | ClientResponse, *args, **kwargs):
+        """
+        Synchronously create a CoolifyValidationError from a response object.
+        Use this in sync code.
+        """
+        error_data = response.json()
+        message = "Coolify Validation Error:"
+        if isinstance(error_data, dict):
+            message += f" {error_data.get('message', '')}"
+            if isinstance(error_data.get('errors'), list):
+                message = ", ".join(error_data['errors'])
+            elif isinstance(error_data.get('errors'), str):
+                message = error_data['errors']
+            elif isinstance(error_data.get('errors'), dict):
+                for key, value in error_data['errors'].items():
+                    message += f"\n\t{key}: {value}"
+        elif isinstance(error_data, list):
+            for item in error_data:
+                message += f"\n\t{item}"
+        return cls(message, *args, response=response, **kwargs)

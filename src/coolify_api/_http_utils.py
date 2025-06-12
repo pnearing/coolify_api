@@ -192,7 +192,10 @@ class HTTPUtils:
 
         if 200 <= status_code < 300:
             log_level = INFO
-            return_value = response.json()
+            if isinstance(response, Response):
+                return_value = response.json()
+            elif isinstance(response, ClientResponse):
+                return_value = response.json()
         elif 300 <= status_code < 400:
             log_level = WARNING
             error_message = (f"Unhandled 3xx error: {status_code} - {response.text} - "
