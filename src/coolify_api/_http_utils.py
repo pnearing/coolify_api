@@ -182,7 +182,10 @@ class HTTPUtils:
             CoolifyValidationError: For validation errors
         """
         # Gather the data:
-        status_code = response.status_code
+        if isinstance(response, Response):
+            status_code = response.status_code
+        elif isinstance(response, ClientResponse):
+            status_code = response.status
         log_level: int = ERROR
         return_value: Any = None
         error_to_raise: Optional[Exception] = None
