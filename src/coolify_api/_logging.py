@@ -27,7 +27,7 @@ Example:
 """
 import os
 from typing import Any
-from logging import Logger
+from logging import Logger, DEBUG
 
 OUTPUT_IS_SHY = os.getenv("OUTPUT_IS_SHY", "true").lower() in ("true", "1", "t", "yes", "y", "yup",
                                                               "sure", "ok", "yep", "yeah", "shy", "on")
@@ -72,11 +72,9 @@ def _log_message(logger: Logger, log_level: int, message: str, hidden: Any = Non
     """
     message = f"{message}"
     if hidden is not None:
-        message += "\n----> HIDDEN INFO FOLLOWS: <----\n"
         if OUTPUT_IS_SHY:
-            message += "<INFO HIDDEN, set OUTPUT_IS_SHY=false to see>"
+            logger.log(DEBUG, "<INFO HIDDEN, set OUTPUT_IS_SHY=false to see>")
         else:
-            message += f"{hidden}"
-        message += "\n----> END HIDDEN INFO <----\n"
+                message += f"{hidden}"
     logger.log(log_level, message)
-
+    
