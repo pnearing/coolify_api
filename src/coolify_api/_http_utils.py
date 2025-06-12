@@ -176,8 +176,7 @@ class HTTPUtils:
             return_value = await response.json()
         elif 300 <= status_code < 400:
             log_level = WARNING
-            error_message = (f"Unhandled 3xx error: {status_code} - {response.text} - "
-                             f"we shouldn't be redirecting.")
+            error_message = f"Unhandled 3xx error: {status_code} - {response.text} - we shouldn't be redirecting."
             _log_message(cls._logger, DEBUG, error_message)
             error_to_raise = CoolifyError(error_message, response=response)
         elif 400 <= status_code < 500:
@@ -194,8 +193,7 @@ class HTTPUtils:
             elif status_code == 422:
                 error_to_raise = CoolifyValidationError(response=response, data=data)
             else:
-                error_message = (f"Unhandled 4xx error: {status_code} - {response.text} - "
-                                 f"please report this to maintainer.")
+                error_message = f"Unhandled 4xx error: {status_code} - {response.text} - please report this to maintainer."
                 _log_message(cls._logger, DEBUG, error_message)
                 error_to_raise = CoolifyError(error_message, response=response, data=data)
         else:
@@ -249,8 +247,7 @@ class HTTPUtils:
             return_value = response.json()
         elif 300 <= status_code < 400:
             log_level = WARNING
-            error_message = (f"Unhandled 3xx error: {status_code} - {response.text} - "
-                             f"we shouldn't be redirecting.")
+            error_message = f"Unhandled 3xx error: {status_code} - {response.text} - we shouldn't be redirecting."
             _log_message(cls._logger, DEBUG, error_message)
             error_to_raise = CoolifyError(error_message, response=response)
         elif 400 <= status_code < 500:
@@ -267,8 +264,7 @@ class HTTPUtils:
             elif status_code == 422:
                 error_to_raise = CoolifyValidationError(response=response, data=data)
             else:
-                error_message = (f"Unhandled 4xx error: {status_code} - {response.text} - "
-                                 f"please report this to maintainer.")
+                error_message = f"Unhandled 4xx error: {status_code} - {response.text} - please report this to maintainer."
                 _log_message(cls._logger, DEBUG, error_message)
                 error_to_raise = CoolifyError(error_message, response=response, data=data)
         else:
