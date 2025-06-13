@@ -63,109 +63,237 @@ class CoolifyApplicationCreate:
         self._http_utils = http_utils
         self._logger = getLogger(__name__)
 
-    def public(self, project_uuid: str, server_uuid: str, environment_name: str,
-               git_repository: str, git_branch: str, build_pack: str, ports_exposes: str,
-               **kwargs) -> dict[str, Any] | Coroutine[Any, Any, dict[str, Any]]:
-        """Create an application from a public Git repository.
+    def public(self, **kwargs) -> dict[str, Any] | Coroutine[Any, Any, dict[str, Any]]:
+        """
+        Create an application from a public Git repository.
 
         Args:
-            project_uuid: UUID of the project to create the application in
-            server_uuid: UUID of the server to deploy the application to
-            environment_name: Name of the environment (e.g., "production")
-            git_repository: URL of the Git repository
-            git_branch: Branch to deploy from
-            build_pack: Build pack type ("nixpacks", "static", "dockerfile", "dockercompose")
-            ports_exposes: Ports to expose (e.g., "3000" or "80,443")
-            **kwargs: Optional parameters including:
-                - name (str): Application name
-                - description (str): Application description
-                - domains (str): Application domains
-                - install_command (str): Custom install command
-                - build_command (str): Custom build command
-                - start_command (str): Custom start command
-                - base_directory (str): Base directory for commands
-                - publish_directory (str): Directory to publish
-                - instant_deploy (bool): Deploy immediately after creation
-
+            "project_uuid": "string",
+            "server_uuid": "string",
+            "environment_name": "string",
+            "environment_uuid": "string",
+            "git_repository": "string",
+            "git_branch": "string",
+            "build_pack": "string",
+            "ports_exposes": "string",
+            "destination_uuid": "string",
+            "name": "string",
+            "description": "string",
+            "domains": "string",
+            "git_commit_sha": "string",
+            "docker_registry_image_name": "string",
+            "docker_registry_image_tag": "string",
+            "is_static": true,
+            "static_image": "string",
+            "install_command": "string",
+            "build_command": "string",
+            "start_command": "string",
+            "ports_mappings": "string",
+            "base_directory": "string",
+            "publish_directory": "string",
+            "health_check_enabled": true,
+            "health_check_path": "string",
+            "health_check_port": "string",
+            "health_check_host": "string",
+            "health_check_method": "string",
+            "health_check_return_code": 0,
+            "health_check_scheme": "string",
+            "health_check_response_text": "string",
+            "health_check_interval": 0,
+            "health_check_timeout": 0,
+            "health_check_retries": 0,
+            "health_check_start_period": 0,
+            "limits_memory": "string",
+            "limits_memory_swap": "string",
+            "limits_memory_swappiness": 0,
+            "limits_memory_reservation": "string",
+            "limits_cpus": "string",
+            "limits_cpuset": "string",
+            "limits_cpu_shares": 0,
+            "custom_labels": "string",
+            "custom_docker_run_options": "string",
+            "post_deployment_command": "string",
+            "post_deployment_command_container": "string",
+            "pre_deployment_command": "string",
+            "pre_deployment_command_container": "string",
+            "manual_webhook_secret_github": "string",
+            "manual_webhook_secret_gitlab": "string",
+            "manual_webhook_secret_bitbucket": "string",
+            "manual_webhook_secret_gitea": "string",
+            "redirect": "string",
+            "instant_deploy": true,
+            "dockerfile": "string",
+            "docker_compose_location": "string",
+            "docker_compose_raw": "string",
+            "docker_compose_custom_start_command": "string",
+            "docker_compose_custom_build_command": "string",
+            "docker_compose_domains": [...],
+            "watch_paths": "string",
+            "use_build_server": true
+        
         Returns:
-            Dictionary containing the created application details
+            Dictionary containing the created application UUID
 
         Raises:
             CoolifyError: For general API errors
             CoolifyAuthenticationError: If authentication fails
         """
-        data = create_data_with_kwargs({
-            "project_uuid": project_uuid,
-            "server_uuid": server_uuid,
-            "environment_name": environment_name,
-            "git_repository": git_repository,
-            "git_branch": git_branch,
-            "build_pack": build_pack,
-            "ports_exposes": ports_exposes
-        }, **kwargs)
-
-        _log_message(self._logger, DEBUG, "Creating public application", data)
-        result = self._http_utils.post("applications/public", data=data)
+        _log_message(self._logger, DEBUG, "Creating public application", kwargs)
+        result = self._http_utils.post("applications/public", data=kwargs)
         _log_message(self._logger, DEBUG, "Public application created", result)
         return result
 
-    def private_github_app(self, project_uuid: str, server_uuid: str, environment_name: str,
-                          github_app_uuid: str, git_repository: str, git_branch: str,
-                          build_pack: str, ports_exposes: str, **kwargs
-                          ) -> dict[str, Any] | Coroutine[Any, Any, dict[str, Any]]:
-        """Create an application from a private repository using GitHub App authentication.
+
+    def private_github_app(self, **kwargs) -> dict[str, Any] | Coroutine[Any, Any, dict[str, Any]]:
+        """
+        Create an application from a private repository using GitHub App authentication.
 
         Args:
-            project_uuid: UUID of the project to create the application in
-            server_uuid: UUID of the server to deploy the application to
-            environment_name: Name of the environment
-            github_app_uuid: UUID of the GitHub App for authentication
-            git_repository: URL of the private Git repository
-            git_branch: Branch to deploy from
-            build_pack: Build pack type ("nixpacks", "static", "dockerfile", "dockercompose")
-            ports_exposes: Ports to expose
-            **kwargs: Optional parameters (same as public() method)
+            "project_uuid": "string",
+            "server_uuid": "string",
+            "environment_name": "string",
+            "environment_uuid": "string",
+            "github_app_uuid": "string",
+            "git_repository": "string",
+            "git_branch": "string",
+            "ports_exposes": "string",
+            "destination_uuid": "string",
+            "build_pack": "string",
+            "name": "string",
+            "description": "string",
+            "domains": "string",
+            "git_commit_sha": "string",
+            "docker_registry_image_name": "string",
+            "docker_registry_image_tag": "string",
+            "is_static": true,
+            "static_image": "string",
+            "install_command": "string",
+            "build_command": "string",
+            "start_command": "string",
+            "ports_mappings": "string",
+            "base_directory": "string",
+            "publish_directory": "string",
+            "health_check_enabled": true,
+            "health_check_path": "string",
+            "health_check_port": "string",
+            "health_check_host": "string",
+            "health_check_method": "string",
+            "health_check_return_code": 0,
+            "health_check_scheme": "string",
+            "health_check_response_text": "string",
+            "health_check_interval": 0,
+            "health_check_timeout": 0,
+            "health_check_retries": 0,
+            "health_check_start_period": 0,
+            "limits_memory": "string",
+            "limits_memory_swap": "string",
+            "limits_memory_swappiness": 0,
+            "limits_memory_reservation": "string",
+            "limits_cpus": "string",
+            "limits_cpuset": "string",
+            "limits_cpu_shares": 0,
+            "custom_labels": "string",
+            "custom_docker_run_options": "string",
+            "post_deployment_command": "string",
+            "post_deployment_command_container": "string",
+            "pre_deployment_command": "string",
+            "pre_deployment_command_container": "string",
+            "manual_webhook_secret_github": "string",
+            "manual_webhook_secret_gitlab": "string",
+            "manual_webhook_secret_bitbucket": "string",
+            "manual_webhook_secret_gitea": "string",
+            "redirect": "string",
+            "instant_deploy": true,
+            "dockerfile": "string",
+            "docker_compose_location": "string",
+            "docker_compose_raw": "string",
+            "docker_compose_custom_start_command": "string",
+            "docker_compose_custom_build_command": "string",
+            "docker_compose_domains": [],
+            "watch_paths": "string",
+            "use_build_server": true
 
         Returns:
-            Dictionary containing the created application details
+            Dictionary containing the created application UUID
 
         Raises:
             CoolifyError: For general API errors
             CoolifyAuthenticationError: If authentication fails
         """
-        data = create_data_with_kwargs({
-            "project_uuid": project_uuid,
-            "server_uuid": server_uuid,
-            "environment_name": environment_name,
-            "github_app_uuid": github_app_uuid,
-            "git_repository": git_repository,
-            "git_branch": git_branch,
-            "build_pack": build_pack,
-            "ports_exposes": ports_exposes
-        }, **kwargs)
-
-        _log_message(self._logger, DEBUG, "Creating private GitHub App application", data)
-        result = self._http_utils.post("applications/private-github-app", data=data)
+        _log_message(self._logger, DEBUG, "Creating private GitHub App application", kwargs)
+        result = self._http_utils.post("applications/private-github-app", data=kwargs)
         _log_message(self._logger, DEBUG, "Private GitHub App application created", result)
         return result
 
-    def private_deploy_key(self, project_uuid: str, server_uuid: str, environment_name: str,
-                          private_key_uuid: str, git_repository: str, git_branch: str,
-                          build_pack: str, ports_exposes: str, **kwargs
-                          ) -> dict[str, Any] | Coroutine[Any, Any, dict[str, Any]]:
-        """Create an application from a private repository using deploy key authentication.
+
+    def private_deploy_key(self, **kwargs) -> dict[str, Any] | Coroutine[Any, Any, dict[str, Any]]:
+        """
+        Create an application from a private repository using deploy key authentication.
 
         Args:
-            project_uuid: UUID of the project to create the application in
-            server_uuid: UUID of the server to deploy the application to
-            environment_name: Name of the environment
-            private_key_uuid: UUID of the deploy key for authentication
-            git_repository: URL of the private Git repository
-            git_branch: Branch to deploy from
-            build_pack: Build pack type ("nixpacks", "static", "dockerfile", "dockercompose")
-            ports_exposes: Ports to expose
-            **kwargs: Optional parameters (same as public() method)
-
+            "project_uuid": "string",
+            "server_uuid": "string",
+            "environment_name": "string",
+            "environment_uuid": "string",
+            "private_key_uuid": "string",
+            "git_repository": "string",
+            "git_branch": "string",
+            "ports_exposes": "string",
+            "destination_uuid": "string",
+            "build_pack": "string",
+            "name": "string",
+            "description": "string",
+            "domains": "string",
+            "git_commit_sha": "string",
+            "docker_registry_image_name": "string",
+            "docker_registry_image_tag": "string",
+            "is_static": true,
+            "static_image": "string",
+            "install_command": "string",
+            "build_command": "string",
+            "start_command": "string",
+            "ports_mappings": "string",
+            "base_directory": "string",
+            "publish_directory": "string",
+            "health_check_enabled": true,
+            "health_check_path": "string",
+            "health_check_port": "string",
+            "health_check_host": "string",
+            "health_check_method": "string",
+            "health_check_return_code": 0,
+            "health_check_scheme": "string",
+            "health_check_response_text": "string",
+            "health_check_interval": 0,
+            "health_check_timeout": 0,
+            "health_check_retries": 0,
+            "health_check_start_period": 0,
+            "limits_memory": "string",
+            "limits_memory_swap": "string",
+            "limits_memory_swappiness": 0,
+            "limits_memory_reservation": "string",
+            "limits_cpus": "string",
+            "limits_cpuset": "string",
+            "limits_cpu_shares": 0,
+            "custom_labels": "string",
+            "custom_docker_run_options": "string",
+            "post_deployment_command": "string",
+            "post_deployment_command_container": "string",
+            "pre_deployment_command": "string",
+            "pre_deployment_command_container": "string",
+            "manual_webhook_secret_github": "string",
+            "manual_webhook_secret_gitlab": "string",
+            "manual_webhook_secret_bitbucket": "string",
+            "manual_webhook_secret_gitea": "string",
+            "redirect": "string",
+            "instant_deploy": true,
+            "dockerfile": "string",
+            "docker_compose_location": "string",
+            "docker_compose_raw": "string",
+            "docker_compose_custom_start_command": "string",
+            "docker_compose_custom_build_command": "string",
+            "docker_compose_domains": [],
+            "watch_paths": "string",
+            "use_build_server": true
         Returns:
             Dictionary containing the created application details
 
@@ -173,38 +301,63 @@ class CoolifyApplicationCreate:
             CoolifyError: For general API errors
             CoolifyAuthenticationError: If authentication fails
         """
-        data = create_data_with_kwargs({
-            "project_uuid": project_uuid,
-            "server_uuid": server_uuid,
-            "environment_name": environment_name,
-            "private_key_uuid": private_key_uuid,
-            "git_repository": git_repository,
-            "git_branch": git_branch,
-            "build_pack": build_pack,
-            "ports_exposes": ports_exposes
-        }, **kwargs)
-
-        _log_message(self._logger, DEBUG, "Creating private deploy key application", data)
-        result = self._http_utils.post("applications/private-deploy-key", data=data)
+        _log_message(self._logger, DEBUG, "Creating private deploy key application", kwargs)
+        result = self._http_utils.post("applications/private-deploy-key", data=kwargs)
         _log_message(self._logger, DEBUG, "Private deploy key application created", result)
         return result
 
-    def dockerfile(self, project_uuid: str, server_uuid: str, environment_name: str,
-                  dockerfile: str, ports_exposes: str, **kwargs
-                  ) -> dict[str, Any] | Coroutine[Any, Any, dict[str, Any]]:
+
+    def dockerfile(self, **kwargs) -> dict[str, Any] | Coroutine[Any, Any, dict[str, Any]]:
         """Create an application from a Dockerfile.
 
         Args:
-            project_uuid: UUID of the project to create the application in
-            server_uuid: UUID of the server to deploy the application to
-            environment_name: Name of the environment
-            dockerfile: Content of the Dockerfile
-            ports_exposes: Ports to expose
-            **kwargs: Optional parameters including:
-                - name (str): Application name
-                - description (str): Application description
-                - domains (str): Application domains
-                - instant_deploy (bool): Deploy immediately after creation
+            "project_uuid": "string",
+            "server_uuid": "string",
+            "environment_name": "string",
+            "environment_uuid": "string",
+            "dockerfile": "string",
+            "build_pack": "string",
+            "ports_exposes": "string",
+            "destination_uuid": "string",
+            "name": "string",
+            "description": "string",
+            "domains": "string",
+            "docker_registry_image_name": "string",
+            "docker_registry_image_tag": "string",
+            "ports_mappings": "string",
+            "base_directory": "string",
+            "health_check_enabled": true,
+            "health_check_path": "string",
+            "health_check_port": "string",
+            "health_check_host": "string",
+            "health_check_method": "string",
+            "health_check_return_code": 0,
+            "health_check_scheme": "string",
+            "health_check_response_text": "string",
+            "health_check_interval": 0,
+            "health_check_timeout": 0,
+            "health_check_retries": 0,
+            "health_check_start_period": 0,
+            "limits_memory": "string",
+            "limits_memory_swap": "string",
+            "limits_memory_swappiness": 0,
+            "limits_memory_reservation": "string",
+            "limits_cpus": "string",
+            "limits_cpuset": "string",
+            "limits_cpu_shares": 0,
+            "custom_labels": "string",
+            "custom_docker_run_options": "string",
+            "post_deployment_command": "string",
+            "post_deployment_command_container": "string",
+            "pre_deployment_command": "string",
+            "pre_deployment_command_container": "string",
+            "manual_webhook_secret_github": "string",
+            "manual_webhook_secret_gitlab": "string",
+            "manual_webhook_secret_bitbucket": "string",
+            "manual_webhook_secret_gitea": "string",
+            "redirect": "string",
+            "instant_deploy": true,
+            "use_build_server": true
 
         Returns:
             Dictionary containing the created application details
@@ -213,36 +366,59 @@ class CoolifyApplicationCreate:
             CoolifyError: For general API errors
             CoolifyAuthenticationError: If authentication fails
         """
-        data = create_data_with_kwargs({
-            "project_uuid": project_uuid,
-            "server_uuid": server_uuid,
-            "environment_name": environment_name,
-            "dockerfile": dockerfile,
-            "ports_exposes": ports_exposes
-        }, **kwargs)
-
-        _log_message(self._logger, DEBUG, "Creating Dockerfile application", data)
-        result = self._http_utils.post("applications/dockerfile", data=data)
+        _log_message(self._logger, DEBUG, "Creating Dockerfile application", kwargs)
+        result = self._http_utils.post("applications/dockerfile", data=kwargs)
         _log_message(self._logger, DEBUG, "Dockerfile application created", result)
         return result
 
-    def docker_image(self, project_uuid: str, server_uuid: str, environment_name: str,
-                    docker_registry_image_name: str, ports_exposes: str, **kwargs
-                    ) -> dict[str, Any] | Coroutine[Any, Any, dict[str, Any]]:
+    def docker_image(self, **kwargs) -> dict[str, Any] | Coroutine[Any, Any, dict[str, Any]]:
         """Create an application from a Docker image.
 
         Args:
-            project_uuid: UUID of the project to create the application in
-            server_uuid: UUID of the server to deploy the application to
-            environment_name: Name of the environment
-            docker_registry_image_name: Name of the Docker image
-            ports_exposes: Ports to expose
-            **kwargs: Optional parameters including:
-                - docker_registry_image_tag (str): Image tag (default: "latest")
-                - name (str): Application name
-                - description (str): Application description
-                - domains (str): Application domains
-                - instant_deploy (bool): Deploy immediately after creation
+            "project_uuid": "string",
+            "server_uuid": "string",
+            "environment_name": "string",
+            "environment_uuid": "string",
+            "docker_registry_image_name": "string",
+            "docker_registry_image_tag": "string",
+            "ports_exposes": "string",
+            "destination_uuid": "string",
+            "name": "string",
+            "description": "string",
+            "domains": "string",
+            "ports_mappings": "string",
+            "health_check_enabled": true,
+            "health_check_path": "string",
+            "health_check_port": "string",
+            "health_check_host": "string",
+            "health_check_method": "string",
+            "health_check_return_code": 0,
+            "health_check_scheme": "string",
+            "health_check_response_text": "string",
+            "health_check_interval": 0,
+            "health_check_timeout": 0,
+            "health_check_retries": 0,
+            "health_check_start_period": 0,
+            "limits_memory": "string",
+            "limits_memory_swap": "string",
+            "limits_memory_swappiness": 0,
+            "limits_memory_reservation": "string",
+            "limits_cpus": "string",
+            "limits_cpuset": "string",
+            "limits_cpu_shares": 0,
+            "custom_labels": "string",
+            "custom_docker_run_options": "string",
+            "post_deployment_command": "string",
+            "post_deployment_command_container": "string",
+            "pre_deployment_command": "string",
+            "pre_deployment_command_container": "string",
+            "manual_webhook_secret_github": "string",
+            "manual_webhook_secret_gitlab": "string",
+            "manual_webhook_secret_bitbucket": "string",
+            "manual_webhook_secret_gitea": "string",
+            "redirect": "string",
+            "instant_deploy": true,
+            "use_build_server": true
 
         Returns:
             Dictionary containing the created application details
@@ -251,34 +427,25 @@ class CoolifyApplicationCreate:
             CoolifyError: For general API errors
             CoolifyAuthenticationError: If authentication fails
         """
-        data = create_data_with_kwargs({
-            "project_uuid": project_uuid,
-            "server_uuid": server_uuid,
-            "environment_name": environment_name,
-            "docker_registry_image_name": docker_registry_image_name,
-            "ports_exposes": ports_exposes
-        }, **kwargs)
-
-        _log_message(self._logger, DEBUG, "Creating Docker image application", data)
-        result = self._http_utils.post("applications/dockerimage", data=data)
+        _log_message(self._logger, DEBUG, "Creating Docker image application", kwargs)
+        result = self._http_utils.post("applications/dockerimage", data=kwargs)
         _log_message(self._logger, DEBUG, "Docker image application created", result)
         return result
 
-    def docker_compose(self, project_uuid: str, server_uuid: str, environment_name: str,
-                      docker_compose_raw: str, **kwargs
-                      ) -> dict[str, Any] | Coroutine[Any, Any, dict[str, Any]]:
+    def docker_compose(self, **kwargs) -> dict[str, Any] | Coroutine[Any, Any, dict[str, Any]]:
         """Create an application from a Docker Compose configuration.
 
         Args:
-            project_uuid: UUID of the project to create the application in
-            server_uuid: UUID of the server to deploy the application to
-            environment_name: Name of the environment
-            docker_compose_raw: Raw content of the docker-compose.yml file
-            **kwargs: Optional parameters including:
-                - name (str): Application name
-                - description (str): Application description
-                - instant_deploy (bool): Deploy immediately after creation
-                - use_build_server (bool): Whether to use build server
+            "project_uuid": "string",
+            "server_uuid": "string",
+            "environment_name": "string",
+            "environment_uuid": "string",
+            "docker_compose_raw": "string",
+            "destination_uuid": "string",
+            "name": "string",
+            "description": "string",
+            "instant_deploy": true,
+            "use_build_server": true
 
         Returns:
             Dictionary containing the created application details
@@ -287,14 +454,7 @@ class CoolifyApplicationCreate:
             CoolifyError: For general API errors
             CoolifyAuthenticationError: If authentication fails
         """
-        data = create_data_with_kwargs({
-            "project_uuid": project_uuid,
-            "server_uuid": server_uuid,
-            "environment_name": environment_name,
-            "docker_compose_raw": docker_compose_raw
-        }, **kwargs)
-
-        _log_message(self._logger, DEBUG, "Creating Docker Compose application", data)
-        result = self._http_utils.post("applications/dockercompose", data=data)
+        _log_message(self._logger, DEBUG, "Creating Docker Compose application", kwargs)
+        result = self._http_utils.post("applications/dockercompose", data=kwargs)
         _log_message(self._logger, DEBUG, "Docker Compose application created", result)
         return result
