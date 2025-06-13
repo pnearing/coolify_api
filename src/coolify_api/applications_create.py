@@ -132,7 +132,10 @@ class CoolifyApplicationCreate:
             "use_build_server": true
         
         Returns:
-            Dictionary containing the created application UUID
+            Dictionary containing the created application UUID:
+            {
+                "uuid": "string"
+            }
 
         Raises:
             CoolifyError: For general API errors
@@ -214,7 +217,10 @@ class CoolifyApplicationCreate:
             "use_build_server": true
 
         Returns:
-            Dictionary containing the created application UUID
+            Dictionary containing the created application UUID:
+            {
+                "uuid": "string"
+            }
 
         Raises:
             CoolifyError: For general API errors
@@ -295,7 +301,10 @@ class CoolifyApplicationCreate:
             "watch_paths": "string",
             "use_build_server": true
         Returns:
-            Dictionary containing the created application details
+            Dictionary containing the created application UUID:
+            {
+                "uuid": "string"
+            }
 
         Raises:
             CoolifyError: For general API errors
@@ -360,7 +369,10 @@ class CoolifyApplicationCreate:
             "use_build_server": true
 
         Returns:
-            Dictionary containing the created application details
+            Dictionary containing the created application UUID:
+            {
+                "uuid": "string"
+            }
 
         Raises:
             CoolifyError: For general API errors
@@ -421,7 +433,10 @@ class CoolifyApplicationCreate:
             "use_build_server": true
 
         Returns:
-            Dictionary containing the created application details
+            Dictionary containing the created application UUID:
+            {
+                "uuid": "string"
+            }
 
         Raises:
             CoolifyError: For general API errors
@@ -448,7 +463,10 @@ class CoolifyApplicationCreate:
             "use_build_server": true
 
         Returns:
-            Dictionary containing the created application details
+            Dictionary containing the created application UUID:
+            {
+                "uuid": "string"
+            }
 
         Raises:
             CoolifyError: For general API errors
