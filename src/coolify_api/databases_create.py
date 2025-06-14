@@ -58,30 +58,39 @@ class CoolifyDatabasesCreate:
         self._http_utils = http_utils
         self._logger = getLogger(__name__)
 
-    def postgresql(self, server_uuid: str, project_uuid: str, environment_name: str,
-                   data: Dict[str, Any] = None, **kwargs) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
-        """Create a PostgreSQL database.
+
+    def postgresql(self, server_uuid: str, project_uuid: str, environment_uuid: str = None, environment_name: str = None, **kwargs) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
+        """
+        Create a PostgreSQL database.
 
         Args:
-            server_uuid: UUID of the server to deploy the database on
-            project_uuid: UUID of the project to create the database in
-            environment_name: Name of the environment (e.g., "production")
-            data: Additional database configuration containing:
-                - postgres_user (str): PostgreSQL user
-                - postgres_password (str): PostgreSQL password
-                - postgres_db (str): PostgreSQL database name
-                - postgres_initdb_args (str): PostgreSQL initdb args
-                - postgres_host_auth_method (str): PostgreSQL host auth method
-                - postgres_conf (str): PostgreSQL configuration
-            **kwargs: Additional configuration options including:
-                - name (str): Database name
-                - description (str): Database description
-                - image (str): Docker image
-                - is_public (bool): Public accessibility
-                - public_port (int): Public port number
-                - limits_memory (str): Memory limit
-                - limits_cpus (str): CPU limit
-                - instant_deploy (bool): Deploy immediately
+            # Required
+            server_uuid - string - UUID of the server *Required
+            project_uuid - string - UUID of the project *Required
+            environment_name - string - Name of the environment. You need to provide at least one of environment_name or environment_uuid. *Required
+            environment_uuid - string - UUID of the environment. You need to provide at least one of environment_name or environment_uuid. *Required
+            
+            # Optional
+            postgres_user - string - PostgreSQL user
+            postgres_password - string - PostgreSQL password
+            postgres_db - string - PostgreSQL database
+            postgres_initdb_args - string - PostgreSQL initdb args
+            postgres_host_auth_method - string - PostgreSQL host auth method
+            postgres_conf - string - PostgreSQL conf
+            destination_uuid - string - UUID of the destination if the server has multiple destinations
+            name - string - Name of the database
+            description - string - Description of the database
+            image - string - Docker Image of the database
+            is_public - boolean - Is the database public?
+            public_port - integer - Public port of the database
+            limits_memory - string - Memory limit of the database
+            limits_memory_swap - string - Memory swap limit of the database
+            limits_memory_swappiness - integer - Memory swappiness of the database
+            limits_memory_reservation - string - Memory reservation of the database
+            limits_cpus - string - CPU limit of the database
+            limits_cpuset - string - CPU set of the database
+            limits_cpu_shares - integer - CPU shares of the database
+            instant_deploy - boolean - Instant deploy the database
 
         Returns:
             Dictionary containing the created database details
@@ -90,219 +99,383 @@ class CoolifyDatabasesCreate:
             CoolifyError: For general API errors
             CoolifyAuthenticationError: If authentication fails
         """
-        base_data = {
+        data = create_data_with_kwargs({
             "server_uuid": server_uuid,
             "project_uuid": project_uuid,
-            "environment_name": environment_name
-        }
-        data = create_data_with_kwargs(data or {}, **base_data, **kwargs)
+        }, **kwargs)
+
+        if environment_uuid:
+            data["environment_uuid"] = environment_uuid
+        elif environment_name:
+            data["environment_name"] = environment_name
+        else:
+            raise ValueError("You need to provide at least one of environment_name or environment_uuid.")
+
         _log_message(self._logger, DEBUG, "Start to create a PostgreSQL database.", data)
         results = self._http_utils.post("databases/postgresql", data=data)
         _log_message(self._logger, DEBUG, "Finish creating a PostgreSQL database", results)
         return results
 
-    def clickhouse(self, server_uuid: str, project_uuid: str, environment_name: str,
-                   clickhouse_admin_user: str = None, clickhouse_admin_password: str = None,
-                   data: Dict[str, Any] = None, **kwargs) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
-        """Create a Clickhouse database.
+
+    def clickhouse(self, project_uuid: str, server_uuid: str, environment_uuid: str = None, environment_name: str = None, **kwargs) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
+        """
+        Create a Clickhouse database.
 
         Args:
-            server_uuid: UUID of the server to deploy the database on
-            project_uuid: UUID of the project to create the database in
-            environment_name: Name of the environment (e.g., "production")
-            clickhouse_admin_user: Clickhouse admin username
-            clickhouse_admin_password: Clickhouse admin password
-            data: Additional database configuration
-            **kwargs: Additional configuration options
+            # Required
+            server_uuid - string - UUID of the server. *Required
+            project_uuid - string - UUID of the project. *Required
+            environment_name - string - Name of the environment. You need to provide at least one of environment_name or environment_uuid. *Required
+            environment_uuid - string - UUID of the environment. You need to provide at least one of environment_name or environment_uuid. *Required
+            
+            # Optional
+            destination_uuid - string - UUID of the destination if the server has multiple destinations
+            clickhouse_admin_user - string - Clickhouse admin user
+            clickhouse_admin_password - string - Clickhouse admin password
+            name - string - Name of the database
+            description - string - Description of the database
+            image - string - Docker Image of the database
+            is_public - boolean - Is the database public?
+            public_port - integer - Public port of the database
+            limits_memory - string - Memory limit of the database
+            limits_memory_swap - string - Memory swap limit of the database
+            limits_memory_swappiness - integer - Memory swappiness of the database
+            limits_memory_reservation - string - Memory reservation of the database
+            limits_cpus - string - CPU limit of the database
+            limits_cpuset - string - CPU set of the database
+            limits_cpu_shares - integer - CPU shares of the database
+            instant_deploy - boolean - Instant deploy the database
 
         Returns:
             Dictionary containing the created database details
         """
-        base_data = {
+        data = create_data_with_kwargs({
             "server_uuid": server_uuid,
             "project_uuid": project_uuid,
-            "environment_name": environment_name
-        }
-        if clickhouse_admin_user:
-            base_data["clickhouse_admin_user"] = clickhouse_admin_user
-        if clickhouse_admin_password:
-            base_data["clickhouse_admin_password"] = clickhouse_admin_password
-        data = create_data_with_kwargs(data or {}, **base_data, **kwargs)
+        }, **kwargs)
+        
+        if environment_uuid:
+            data["environment_uuid"] = environment_uuid
+        elif environment_name:
+            data["environment_name"] = environment_name
+        else:
+            raise ValueError("You need to provide at least one of environment_name or environment_uuid.")
+
         _log_message(self._logger, DEBUG, "Start to create a ClickHouse database.", data)
         results = self._http_utils.post("databases/clickhouse", data=data)
         _log_message(self._logger, DEBUG, "Finish creating a ClickHouse database")
         return results
 
-    def dragonfly(self, server_uuid: str, project_uuid: str, environment_name: str,
-                  dragonfly_password: str = None, data: Dict[str, Any] = None, **kwargs
+
+    def dragonfly(self, server_uuid: str, project_uuid: str, dragonfly_password: str,
+                  environment_name: str = None, environment_uuid: str = None, data: Dict[str, Any] = None, **kwargs
                   ) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
         """Create a DragonFly database.
 
         Args:
-            server_uuid: UUID of the server to deploy the database on
-            project_uuid: UUID of the project to create the database in
-            environment_name: Name of the environment (e.g., "production")
-            dragonfly_password: DragonFly password
-            data: Additional database configuration
-            **kwargs: Additional configuration options
+            # Required
+            server_uuid - string - UUID of the server. *Required
+            project_uuid - string - UUID of the project. *Required
+            dragonfly_password - string - DragonFly password *Required
+            environment_name - string - Name of the environment. You need to provide at least one of environment_name or environment_uuid. *Required
+            environment_uuid - string - UUID of the environment. You need to provide at least one of environment_name or environment_uuid. *Required
+            
+            # Optional
+            destination_uuid - string - UUID of the destination if the server has multiple destinations
+            name - string - Name of the database
+            description - string - Description of the database
+            image - string - Docker Image of the database
+            is_public - boolean - Is the database public?
+            public_port - integer - Public port of the database
+            limits_memory - string - Memory limit of the database
+            limits_memory_swap - string - Memory swap limit of the database
+            limits_memory_swappiness - integer - Memory swappiness of the database
+            limits_memory_reservation - string - Memory reservation of the database
+            limits_cpus - string - CPU limit of the database
+            limits_cpuset - string - CPU set of the database
+            limits_cpu_shares - integer - CPU shares of the database
+            instant_deploy - boolean - Instant deploy the database
 
         Returns:
             Dictionary containing the created database details
         """
-        base_data = {
+        data = create_data_with_kwargs({
             "server_uuid": server_uuid,
             "project_uuid": project_uuid,
-            "environment_name": environment_name
-        }
-        if dragonfly_password:
-            base_data["dragonfly_password"] = dragonfly_password
-        data = create_data_with_kwargs(data or {}, **base_data, **kwargs)
+            "dragonfly_password": dragonfly_password,
+        }, **kwargs)
+
+        if environment_uuid:
+            data["environment_uuid"] = environment_uuid
+        elif environment_name:
+            data["environment_name"] = environment_name
+        else:
+            raise ValueError("You need to provide at least one of environment_name or environment_uuid.")
+
         _log_message(self._logger, DEBUG, "Start to create a DragonFly database.", data)
         results = self._http_utils.post("databases/dragonfly", data=data)
         _log_message(self._logger, DEBUG, "Finish creating a DragonFly database")
         return results
 
-    def redis(self, server_uuid: str, project_uuid: str, environment_name: str,
-              redis_password: str = None, data: Dict[str, Any] = None, **kwargs
+
+    def redis(self, server_uuid: str, project_uuid: str, redis_password: str,
+              environment_name: str = None, environment_uuid: str = None, data: Dict[str, Any] = None, **kwargs
               ) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
         """Create a Redis database.
 
         Args:
-            server_uuid: UUID of the server to deploy the database on
-            project_uuid: UUID of the project to create the database in
-            environment_name: Name of the environment (e.g., "production")
-            redis_password: Redis password (recommended)
-            data: Additional database configuration containing:
-                - redis_conf (str): Redis configuration
-            **kwargs: Additional configuration options
+            # Required
+            server_uuid - string - UUID of the server *Required
+            project_uuid - string - UUID of the project *Required
+            redis_password - string - Redis password *Required
+            environment_name - string - Name of the environment. You need to provide at least one of environment_name or environment_uuid. *Required
+            environment_uuid - string - UUID of the environment. You need to provide at least one of environment_name or environment_uuid. *Required
+            
+            # Optional
+            redis_conf - string - Redis conf
+            name - string - Name of the database
+            description - string - Description of the database
+            image - string - Docker Image of the database
+            is_public - boolean - Is the database public?
+            public_port - integer - Public port of the database
+            limits_memory - string - Memory limit of the database
+            limits_memory_swap - string - Memory swap limit of the database
+            limits_memory_swappiness - integer - Memory swappiness of the database
+            limits_memory_reservation - string - Memory reservation of the database
+            limits_cpus - string - CPU limit of the database
+            limits_cpuset - string - CPU set of the database
+            limits_cpu_shares - integer - CPU shares of the database
+            instant_deploy - boolean - Instant deploy the database
 
         Returns:
             Dictionary containing the created database details
         """
-        base_data = {
+        data = create_data_with_kwargs({
             "server_uuid": server_uuid,
             "project_uuid": project_uuid,
-            "environment_name": environment_name
-        }
-        if redis_password:
-            base_data["redis_password"] = redis_password
+            "redis_password": redis_password,
+        }, **kwargs)
+        
+        if environment_uuid:
+            data["environment_uuid"] = environment_uuid
+        elif environment_name:
+            data["environment_name"] = environment_name
+        else:
+            raise ValueError("You need to provide at least one of environment_name or environment_uuid.")
+
         data = create_data_with_kwargs(data or {}, **base_data, **kwargs)
         _log_message(self._logger, DEBUG, "Start to create a Redis database.", data)
         results = self._http_utils.post("databases/redis", data=data)
         _log_message(self._logger, DEBUG, "Finish creating a Redis database")
         return results
 
-    def keydb(self, server_uuid: str, project_uuid: str, environment_name: str,
-              keydb_password: str = None, data: Dict[str, Any] = None, **kwargs
+
+    def keydb(self, server_uuid: str, project_uuid: str, keydb_password: str,
+              environment_name: str = None, environment_uuid: str = None, data: Dict[str, Any] = None, **kwargs
               ) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
         """Create a KeyDB database.
 
         Args:
-            server_uuid: UUID of the server to deploy the database on
-            project_uuid: UUID of the project to create the database in
-            environment_name: Name of the environment (e.g., "production")
-            keydb_password: KeyDB password
-            data: Additional database configuration containing:
-                - keydb_conf (str): KeyDB configuration
-            **kwargs: Additional configuration options
+            # Required
+            server_uuid - string - UUID of the server. *Required
+            project_uuid - string - UUID of the project. *Required
+            keydb_password - string - KeyDB password *Required 
+            environment_name - string - Name of the environment. You need to provide at least one of environment_name or environment_uuid. *Required
+            environment_uuid - string - UUID of the environment. You need to provide at least one of environment_name or environment_uuid. *Required
+            
+            # Optional
+            destination_uuid - string - UUID of the destination if the server has multiple destinations
+            keydb_conf - string - KeyDB conf
+            name - string - Name of the database
+            description - string - Description of the database
+            image - string - Docker Image of the database
+            is_public - boolean - Is the database public?
+            public_port - integer - Public port of the database
+            limits_memory - string - Memory limit of the database
+            limits_memory_swap - string - Memory swap limit of the database
+            limits_memory_swappiness - integer - Memory swappiness of the database
+            limits_memory_reservation - string - Memory reservation of the database
+            limits_cpus - string - CPU limit of the database
+            limits_cpuset - string - CPU set of the database
+            limits_cpu_shares - integer - CPU shares of the database
+            instant_deploy - boolean - Instant deploy the database
+
 
         Returns:
             Dictionary containing the created database details
         """
-        base_data = {
+        data = create_data_with_kwargs({
             "server_uuid": server_uuid,
             "project_uuid": project_uuid,
-            "environment_name": environment_name
-        }
-        if keydb_password:
-            base_data["keydb_password"] = keydb_password
-        data = create_data_with_kwargs(data or {}, **base_data, **kwargs)
+            "keydb_password": keydb_password,
+        }, **kwargs)
+        
+        if environment_uuid:
+            data["environment_uuid"] = environment_uuid
+        elif environment_name:
+            data["environment_name"] = environment_name
+        else:
+            raise ValueError("You need to provide at least one of environment_name or environment_uuid.")
+
         _log_message(self._logger, DEBUG, "Start to create a KeyDB database.", data)
         results = self._http_utils.post("databases/keydb", data=data)
         _log_message(self._logger, DEBUG, "Finish creating a KeyDB database")
         return results
 
-    def mariadb(self, server_uuid: str, project_uuid: str, environment_name: str,
-                mariadb_root_password: str = None, mariadb_user: str = None,
-                mariadb_password: str = None, mariadb_database: str = None,
-                data: Dict[str, Any] = None, **kwargs) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
+
+    def mariadb(self, server_uuid: str, project_uuid: str,
+                environment_name: str = None, environment_uuid: str = None,
+                **kwargs) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
         """Create a MariaDB database.
 
         Args:
-            server_uuid: UUID of the server to deploy the database on
-            project_uuid: UUID of the project to create the database in
-            environment_name: Name of the environment (e.g., "production")
-            mariadb_root_password: MariaDB root password
-            mariadb_user: MariaDB user
-            mariadb_password: MariaDB password
-            mariadb_database: MariaDB database name
-            data: Additional database configuration containing:
-                - mariadb_conf (str): MariaDB configuration
-            **kwargs: Additional configuration options
+            # Required
+            server_uuid - string - UUID of the server. *Required
+            project_uuid - string - UUID of the project. *Required
+            environment_name - string - Name of the environment. You need to provide at least one of environment_name or environment_uuid. *Required
+            environment_uuid - string - UUID of the environment. You need to provide at least one of environment_name or environment_uuid. *Required
+            
+            # Optional
+            destination_uuid - string - UUID of the destination if the server has multiple destinations
+            mariadb_conf - string - MariaDB conf
+            mariadb_root_password - string - MariaDB root password
+            mariadb_user - string - MariaDB user
+            mariadb_password - string - MariaDB password
+            mariadb_database - string - MariaDB database
+            name - string - Name of the database
+            description - string - Description of the database
+            image - string - Docker Image of the database
+            is_public - boolean - Is the database public?
+            public_port - integer - Public port of the database
+            limits_memory - string - Memory limit of the database
+            limits_memory_swap - string - Memory swap limit of the database
+            limits_memory_swappiness - integer - Memory swappiness of the database
+            limits_memory_reservation - string - Memory reservation of the database
+            limits_cpus - string - CPU limit of the database
+            limits_cpuset - string - CPU set of the database
+            limits_cpu_shares - integer - CPU shares of the database
+            instant_deploy - boolean - Instant deploy the database
 
         Returns:
             Dictionary containing the created database details
         """
-        base_data = {
+        data = create_data_with_kwargs({
             "server_uuid": server_uuid,
             "project_uuid": project_uuid,
-            "environment_name": environment_name
-        }
-        if mariadb_root_password:
-            base_data["mariadb_root_password"] = mariadb_root_password
-        if mariadb_user:
-            base_data["mariadb_user"] = mariadb_user
-        if mariadb_password:
-            base_data["mariadb_password"] = mariadb_password
-        if mariadb_database:
-            base_data["mariadb_database"] = mariadb_database
-        data = create_data_with_kwargs(data or {}, **base_data, **kwargs)
+        }, **kwargs)
+        
+        if environment_uuid:
+            data["environment_uuid"] = environment_uuid
+        elif environment_name:
+            data["environment_name"] = environment_name
+        else:
+            raise ValueError("You need to provide at least one of environment_name or environment_uuid.")
+
         _log_message(self._logger, DEBUG, "Start to create a MariaDB database.", data)
         results = self._http_utils.post("databases/mariadb", data=data)
         _log_message(self._logger, DEBUG, "Finish creating a MariaDB database")
         return results
 
-    def mysql(self, data: Dict[str, Any], **kwargs
-             ) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
+
+    def mysql(self, server_uuid: str, project_uuid: str,
+              environment_name: str = None, environment_uuid: str = None,
+              **kwargs) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
         """Create a MySQL database.
 
         Args:
-            data: Database configuration containing:
-                - server_uuid (str, required): UUID of the server
-                - project_uuid (str, required): UUID of the project
-                - environment_name (str, required): Name of the environment
-                - mysql_root_password (str): MySQL root password
-                - mysql_user (str): MySQL user
-                - mysql_database (str): MySQL database name
-                - mysql_conf (str): MySQL configuration
-            **kwargs: Additional configuration options
+            # Required
+            server_uuid - string - UUID of the server. *Required
+            project_uuid - string - UUID of the project. *Required
+            environment_name - string - Name of the environment. You need to provide at least one of environment_name or environment_uuid. *Required
+            environment_uuid - string - UUID of the environment. You need to provide at least one of environment_name or environment_uuid. *Required
+            
+            # Optional
+            destination_uuid - string - UUID of the destination if the server has multiple destinations
+            mysql_root_password - string - MySQL root password
+            mysql_password - string - MySQL password
+            mysql_user - string - MySQL user
+            mysql_database - string - MySQL database
+            mysql_conf - string - MySQL conf
+            name - string - Name of the database
+            description - string - Description of the database
+            image - string - Docker Image of the database
+            is_public - boolean - Is the database public?
+            public_port - integer - Public port of the database
+            limits_memory - string - Memory limit of the database
+            limits_memory_swap - string - Memory swap limit of the database
+            limits_memory_swappiness - integer - Memory swappiness of the database
+            limits_memory_reservation - string - Memory reservation of the database
+            limits_cpus - string - CPU limit of the database
+            limits_cpuset - string - CPU set of the database
+            limits_cpu_shares - integer - CPU shares of the database
+            instant_deploy - boolean - Instant deploy the database
 
         Returns:
             Dictionary containing the created database details
         """
-        data = create_data_with_kwargs(data, **kwargs)
+        data = create_data_with_kwargs({
+            "server_uuid": server_uuid,
+            "project_uuid": project_uuid,
+        }, **kwargs)
+        
+        if environment_uuid:
+            data["environment_uuid"] = environment_uuid
+        elif environment_name:
+            data["environment_name"] = environment_name
+        else:
+            raise ValueError("You need to provide at least one of environment_name or environment_uuid.")
+
         _log_message(self._logger, DEBUG, "Start to create a MySQL database.", data)
         results = self._http_utils.post("databases/mysql", data=data)
         _log_message(self._logger, DEBUG, "Finish creating a MySQL database")
         return results
 
-    def mongodb(self, data: Dict[str, Any], **kwargs
-               ) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
+
+    def mongodb(self, server_uuid: str, project_uuid: str,
+                environment_name: str = None, environment_uuid: str = None,
+                **kwargs) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
         """Create a MongoDB database.
 
         Args:
-            data: Database configuration containing:
-                - server_uuid (str, required): UUID of the server
-                - project_uuid (str, required): UUID of the project
-                - environment_name (str, required): Name of the environment
-                - mongo_conf (str): MongoDB configuration
-                - mongo_initdb_root_username (str): MongoDB root username
-            **kwargs: Additional configuration options
+            # Required
+            server_uuid - string - UUID of the server. *Required
+            project_uuid - string - UUID of the project. *Required
+            environment_name - string - Name of the environment. You need to provide at least one of environment_name or environment_uuid. *Required
+            environment_uuid - string - UUID of the environment. You need to provide at least one of environment_name or environment_uuid. *Required
+            
+            # Optional
+            destination_uuid - string - UUID of the destination if the server has multiple destinations
+            mongo_conf - string - MongoDB conf
+            mongo_initdb_root_username - string - MongoDB initdb root username
+            name - string - Name of the database
+            description - string - Description of the database
+            image - string - Docker Image of the database
+            is_public - boolean - Is the database public?
+            public_port - integer - Public port of the database
+            limits_memory - string - Memory limit of the database
+            limits_memory_swap - string - Memory swap limit of the database
+            limits_memory_swappiness - integer - Memory swappiness of the database
+            limits_memory_reservation - string - Memory reservation of the database
+            limits_cpus - string - CPU limit of the database
+            limits_cpuset - string - CPU set of the database
+            limits_cpu_shares - integer - CPU shares of the database
+            instant_deploy - boolean - Instant deploy the database
 
         Returns:
             Dictionary containing the created database details
         """
-        data = create_data_with_kwargs(data, **kwargs)
+        data = create_data_with_kwargs({
+            "server_uuid": server_uuid,
+            "project_uuid": project_uuid,
+        }, **kwargs)
+        
+        if environment_uuid:
+            data["environment_uuid"] = environment_uuid
+        elif environment_name:
+            data["environment_name"] = environment_name
+        else:
+            raise ValueError("You need to provide at least one of environment_name or environment_uuid.")
+
         _log_message(self._logger, DEBUG, "Start to create a MongoDB database.", data)
         results = self._http_utils.post("databases/mongodb", data=data)
         _log_message(self._logger, DEBUG, "Finish creating a MongoDB database")
