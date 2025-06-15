@@ -154,7 +154,7 @@ class CoolifyApplications:
         _log_message(self._logger, DEBUG, message, results)
         return results
 
-    def update(self, application_uuid: str, data: Dict[str, Any], **kwargs
+    def update(self, application_uuid: str, data: Dict[str, Any] = None, **kwargs
                ) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
         """Update application settings.
 
