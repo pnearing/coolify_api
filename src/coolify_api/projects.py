@@ -190,13 +190,14 @@ class CoolifyProjects:
         _log_message(self._logger, DEBUG, message, results)
         return results
 
-    def environment(self, project_uuid: str, environment_name: str
+    def environment(self, project_uuid: str, environment_name: str = None, environment_uuid: str = None
                        ) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
         """Get project environment by name.
 
         Args:
             project_uuid: UUID of the project
-            environment_name: Name of the environment to retrieve
+            environment_name: Name of the environment to retrieve # One of environment_name or environment_uuid is required
+            environment_uuid: The uuid of the environment to retrieve # One of environment_name or environment_uuid is required
 
         Returns:
             Environment object containing:
@@ -212,9 +213,17 @@ class CoolifyProjects:
             CoolifyAuthenticationError: If authentication fails
             CoolifyNotFoundError: If project or environment not found
         """
-        message = f"Start to get environment {environment_name} for project: {project_uuid}"
+        if environment_uuid is not None:
+            environment_value = environment_uuid
+        elif environment_name is not None:
+            environment_value = environment_name
+        else:
+            _log_message(self._logger, ERROR, "You need to provide at least one of environment_name or environment_uuid")
+            raise ValueError("You need to provide at least one of environment_name or environment_uuid")
+
+        message = f"Start to get environment {environment_value} for project: {project_uuid}"
         _log_message(self._logger, DEBUG, message)
-        results = self._http_utils.get(f"projects/{project_uuid}/{environment_name}")
-        message = f"Finish getting environment {environment_name}"
+        results = self._http_utils.get(f"projects/{project_uuid}/{environment_value}")
+        message = f"Finish getting environment {environment_value}"
         _log_message(self._logger, DEBUG, message, results)
         return results
