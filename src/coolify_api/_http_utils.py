@@ -353,6 +353,7 @@ class HTTPUtils:
             RuntimeError: If class not properly initialized
         """
         url = _build_url(self._base_url, endpoint)
+        _log_message(self._logger, DEBUG, f"Starting GET request to {url}")
         if self._async is not None:
             if self._async:
                 return self.do_async_op("GET", url, params)
@@ -377,6 +378,7 @@ class HTTPUtils:
             RuntimeError: If class not properly initialized
         """
         url = _build_url(self._base_url, endpoint)
+        _log_message(self._logger, DEBUG, f"Starting POST request to {url}")
         if self._async is not None:
             if self._async:
                 return self.do_async_op("POST", url, params, data)
@@ -399,6 +401,7 @@ class HTTPUtils:
             RuntimeError: If class not properly initialized
         """
         url = _build_url(self._base_url, endpoint)
+        _log_message(self._logger, DEBUG, f"Starting PATCH request to {url}")
         if self._async is not None:
             if self._async:
                 return self.do_async_op("PATCH", url, params, data)
@@ -420,6 +423,7 @@ class HTTPUtils:
             RuntimeError: If class not properly initialized
         """
         url = _build_url(self._base_url, endpoint)
+        _log_message(self._logger, DEBUG, f"Starting DELETE request to {url}")
         if self._async is not None:
             if self._async:
                 return self.do_async_op("DELETE", url, params)
