@@ -126,15 +126,14 @@ class CoolifyValidationError(CoolifyError):
         message: Formatted error description with validation details
         response: Full API response for additional error context
     """
-    def __init__(self, message: str, *args, response=None, **kwargs):
+    def __init__(self, *args, response=None, **kwargs):
         """
         Initialize validation error with a pre-built message.
         Use the async classmethod 'from_response' to construct this exception from an HTTP response.
         """
-        super().__init__(message, *args, response=response, **kwargs)
 
     @classmethod
-    async def from_response(cls, response: Response | ClientResponse, *args, **kwargs):
+    async def from_response_async(cls, response: ClientResponse, *args, **kwargs):
         """
         Asynchronously create a CoolifyValidationError from a response object.
         Use this in async code to ensure coroutines are awaited.
@@ -144,7 +143,7 @@ class CoolifyValidationError(CoolifyError):
             error_data = await response.json()
         else:
             error_data = response.json()
-        message = "Coolify Validation Error:"
+        message = ""
         if isinstance(error_data, dict):
             message += f" {error_data.get('message', '')}"
             if isinstance(error_data.get('errors'), list):
@@ -160,7 +159,7 @@ class CoolifyValidationError(CoolifyError):
         return cls(message, *args, response=response, **kwargs)
 
     @classmethod
-    def from_response_sync(cls, response: Response | ClientResponse, *args, **kwargs):
+    def from_response_sync(cls, response: Response, *args, **kwargs):
         """
         Synchronously create a CoolifyValidationError from a response object.
         Use this in sync code.
