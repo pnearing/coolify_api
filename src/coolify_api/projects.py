@@ -12,7 +12,7 @@ Example:
     ```python
     from coolify_api import CoolifyAPIClient
 
-    client = CoolifyAPIClient()
+    client = CoolifyAPIClient(api_key="your_api_key")
 
     # List all projects
     projects = client.projects.list_all()

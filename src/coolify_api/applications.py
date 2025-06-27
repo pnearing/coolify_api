@@ -75,6 +75,7 @@ class CoolifyApplications:
         self._control = CoolifyResourceControl(http_utils, "applications")
         self._logger = getLogger(__name__)
 
+
     def list_all(self) -> List[Dict[str, Any]] | Coroutine[Any, Any, List[Dict[str, Any]]]:
         """List all applications.
 
@@ -99,6 +100,7 @@ class CoolifyApplications:
         _log_message(self._logger, DEBUG, message, results)
         return results
 
+
     def get(self, application_uuid: str) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
         """Get application details by UUID.
 
@@ -119,6 +121,7 @@ class CoolifyApplications:
         message = f"Finish getting application with uuid: {application_uuid}"
         _log_message(self._logger, DEBUG, message, results)
         return results
+
 
     def delete(self, application_uuid: str, delete_configurations: bool = True,
                delete_volumes: bool = True, docker_cleanup: bool = True,
@@ -154,6 +157,7 @@ class CoolifyApplications:
         _log_message(self._logger, DEBUG, message, results)
         return results
 
+
     def update(self, application_uuid: str, data: Dict[str, Any] = None, **kwargs
                ) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
         """Update application settings.
@@ -179,6 +183,29 @@ class CoolifyApplications:
         _log_message(self._logger, DEBUG, message, results)
         return results
 
+
+    def logs(self, application_uuid: str) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
+        """Get application logs.
+
+        Args:
+            application_uuid: UUID of the application to get logs for
+
+        Returns:
+            Dictionary containing application logs
+
+        Raises:
+            CoolifyError: For general API errors
+            CoolifyAuthenticationError: If authentication fails
+            CoolifyValidationError: If application UUID is invalid
+        """
+        message = f"Start to get logs for application with uuid: {application_uuid}"
+        _log_message(self._logger, DEBUG, message)
+        results = self._http_utils.get(f"applications/{application_uuid}/logs")
+        message = f"Finish getting logs for application with uuid: {application_uuid}"
+        _log_message(self._logger, DEBUG, message, results)
+        return results
+
+
     def start(self, application_uuid: str, force: bool = False,
               instant_deploy: bool = False) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
         """Start or deploy an application.
@@ -199,6 +226,7 @@ class CoolifyApplications:
         """
         return self._control.start(application_uuid, force=force, instant_deploy=instant_deploy)
 
+
     def stop(self, application_uuid: str) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
         """Stop an application.
 
@@ -214,6 +242,7 @@ class CoolifyApplications:
             CoolifyAuthenticationError: If authentication fails
         """
         return self._control.stop(application_uuid)
+
 
     def restart(self, application_uuid: str) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
         """Restart an application.
@@ -232,27 +261,29 @@ class CoolifyApplications:
         """
         return self._control.restart(application_uuid)
 
-    def execute_command(self, application_uuid: str, command: str
-                       ) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
-        """Execute a command on an application's container.
 
-        Args:
-            application_uuid: UUID of the application
-            command: Command to execute
+    # def execute_command(self, application_uuid: str, command: str
+    #                    ) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
+    #     """Execute a command on an application's container.
 
-        Returns:
-            Dictionary containing execution results:
-            - message (str): "Command executed"
-            - response (str): Command output
+    #     Args:
+    #         application_uuid: UUID of the application
+    #         command: Command to execute
 
-        Raises:
-            CoolifyError: For general API errors
-            CoolifyAuthenticationError: If authentication fails
-        """
-        message = f"Executing command on application with uuid: {application_uuid}"
-        _log_message(self._logger, DEBUG, message, {"command": command})
-        results = self._http_utils.post(f"applications/{application_uuid}/execute", 
-                                      data={"command": command})
-        message = f"Finished executing command on application with uuid: {application_uuid}"
-        _log_message(self._logger, DEBUG, message, results)
-        return results
+    #     Returns:
+    #         Dictionary containing execution results:
+    #         - message (str): "Command executed"
+    #         - response (str): Command output
+
+    #     Raises:
+    #         CoolifyError: For general API errors
+    #         CoolifyAuthenticationError: If authentication fails
+    #     """
+    #     message = f"Executing command on application with uuid: {application_uuid}"
+    #     _log_message(self._logger, DEBUG, message, {"command": command})
+    #     results = self._http_utils.post(f"applications/{application_uuid}/execute", 
+    #                                   data={"command": command})
+    #     message = f"Finished executing command on application with uuid: {application_uuid}"
+    #     _log_message(self._logger, DEBUG, message, results)
+    #     return results
+

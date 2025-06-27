@@ -37,8 +37,8 @@ class CoolifyEnvironment:
     """Base class for managing environment variables.
 
     This class provides common functionality for managing environment variables
-    across different Coolify resources. It is designed to be inherited by specific
-    resource environment managers (e.g., ApplicationEnvironment, ServiceEnvironment).
+    across different Coolify resources. It is designed to instantiate specific
+    environment managers for different resource types.
     """
 
     def __init__(self, http_utils: HTTPUtils, resource_type: str) -> None:

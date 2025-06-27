@@ -108,13 +108,15 @@ class CoolifyDeployments:
         return results
 
     def deploy(self, deployment_uuid: Optional[str] = None, tag: Optional[str] = None,
-               force: bool = False) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
+               force_rebuild: bool = False, pull_request_id: Optional[int] = None\
+                ) -> Dict[str, Any] | Coroutine[Any, Any, Dict[str, Any]]:
         """Trigger deployment by UUID or tag.
 
         Args:
             deployment_uuid: UUID(s) of deployment(s) to trigger. Can be comma-separated.
             tag: Tag name(s) to deploy. Can be comma-separated.
-            force: Whether to force rebuild (without cache)
+            force_rebuild: Whether to force rebuild (without cache)
+            pull_request_id: ID of the pull request to deploy, cannot be used with tag(s)
 
         Returns:
             Dictionary containing deployment details:
@@ -126,15 +128,20 @@ class CoolifyDeployments:
         Raises:
             CoolifyError: For general API errors
             CoolifyAuthenticationError: If authentication fails
-            AttributeError: If neither deployment_uuid nor tag is specified
+            AttributeError: If neither deployment_uuid nor tag nor pull_request_id is specified
+            AttributeError: If both tag and pull_request_id are specified
         """
-        if deployment_uuid is None and tag is None:
-            raise AttributeError("Either deployment_uuid or tag must be specified")
-        params = {"force": force}
+        if deployment_uuid is None and tag is None and pull_request_id is None:
+            raise AttributeError("Either deployment_uuid or tag or pull_request_id must be specified")
+        if tag and pull_request_id:
+            raise AttributeError("Cannot specify both tag and pull_request_id")
+        params = {"force": force_rebuild}
         if deployment_uuid:
             params["uuid"] = deployment_uuid
         if tag:
             params["tag"] = tag
+        if pull_request_id:
+            params['pr'] = pull_request_id
         message = f"Start to deploy deployment with params: {params}"
         _log_message(self._logger, DEBUG, message)
         results = self._http_utils.post("deploy", params=params)
