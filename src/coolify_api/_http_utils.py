@@ -72,7 +72,7 @@ class HTTPUtils:
     efficiently while managing API limits and exceptions.
 
     Attributes:
-        _requests_per_second (int): Maximum requests per second (default: 4)
+        _requests_per_second (float): Maximum requests per second (default: 4.0, supports fractional values)
         _timeout (int): Request timeout in seconds (default: 10)
         _last_request_time (float): Timestamp of last request for rate limiting
         _logger: Logger instance for this class
@@ -85,7 +85,7 @@ class HTTPUtils:
         base_url: Base URL for the API
         headers: Headers to be sent with each request
     """
-    _requests_per_second: int = int(os.getenv("REQUESTS_PER_SECOND", "4"))
+    _requests_per_second: float = float(os.getenv("REQUESTS_PER_SECOND", "3.3"))
     _timeout: int = int(os.getenv("REQUESTS_TIMEOUT", "10"))
     _last_request_time: float = time.time() - 1
     _logger = getLogger(__name__)
@@ -131,7 +131,7 @@ class HTTPUtils:
             limited = True
             sleep_time = interval - (current_time - cls._last_request_time)
             message = f"Rate limiting applied. Sleeping for {sleep_time} seconds."
-            _log_message(cls._logger, DEBUG, message)
+            _log_message(cls._logger, INFO, message)
             await asyncio.sleep(sleep_time)
         return limited
 
@@ -152,7 +152,7 @@ class HTTPUtils:
             limited = True
             sleep_time = interval - (current_time - cls._last_request_time)
             message = f"Rate limiting applied. Sleeping for {sleep_time} seconds."
-            _log_message(cls._logger, DEBUG, message)
+            _log_message(cls._logger, INFO, message)
             time.sleep(sleep_time)
         return limited
 
