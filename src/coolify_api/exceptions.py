@@ -67,6 +67,21 @@ class CoolifyAuthenticationError(CoolifyError):
         super().__init__(message, *args, headers=headers, **kw_args)
 
 
+class CoolifyRateLimitError(CoolifyError):
+    """Exception raised when the API request exceeds rate limits."""
+    def __init__(self, response: Response | ClientResponse, headers, *args, **kw_args) -> None:
+        """Initialize rate limit error.
+
+        Args:
+            response: HTTP response that triggered the error
+            headers: Response headers
+            *args: Additional positional arguments
+            **kw_args: Additional keyword arguments
+        """
+        message = f"Coolify Rate Limit Error: {response.text}"
+        super().__init__(message, *args, headers=headers, **kw_args)
+
+
 class CoolifyPermissionError(CoolifyError):
     """Exception raised when the API request lacks required permissions.
 

@@ -192,6 +192,8 @@ class HTTPUtils:
                 error_to_raise = CoolifyNotFoundError(response=response, headers=headers)
             elif status_code == 422:
                 error_to_raise = await CoolifyValidationError.from_response_async(response=response, data=data)
+            elif status_code == 429:
+                error_to_raise = CoolifyRateLimitError(response=response, headers=headers)
             else:
                 error_message = f"Unhandled 4xx error: {status_code} - {response.text} - please report this to maintainer."
                 _log_message(cls._logger, DEBUG, error_message)
