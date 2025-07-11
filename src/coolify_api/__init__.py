@@ -31,9 +31,9 @@ Author:
     Peter Nearing <pn@goldeverywhere.com>
 """
 from .api_client import CoolifyAPIClient
-
+from .exceptions import CoolifyError, CoolifyAuthenticationError, CoolifyPermissionError, CoolifyValidationError, CoolifyNotFoundError, CoolifyRateLimitError
 __version__ = "0.1.0"
 __author__ = "Peter Nearing"
 __email__ = "pn@goldeverywhere.com"
 
-__all__ = ["CoolifyAPIClient"]
+__all__ = ["CoolifyAPIClient", "CoolifyError", "CoolifyAuthenticationError", "CoolifyPermissionError", "CoolifyValidationError", "CoolifyNotFoundError", "CoolifyRateLimitError"]
