@@ -146,13 +146,13 @@ class CoolifyApplications:
         """
         message = f"Start to delete application with uuid: {application_uuid}"
         _log_message(self._logger, DEBUG, message)
-        params = {
+        data = {
             "delete_configurations": delete_configurations,
             "delete_volumes": delete_volumes,
             "docker_cleanup": docker_cleanup,
             "delete_connected_networks": delete_connected_networks
         }
-        results = self._http_utils.delete(f"applications/{application_uuid}", params=params)
+        results = self._http_utils.delete(f"applications/{application_uuid}", data=data)
         message = f"Finish deleting application with uuid: {application_uuid}"
         _log_message(self._logger, DEBUG, message, results)
         return results
