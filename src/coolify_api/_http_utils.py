@@ -387,6 +387,8 @@ class HTTPUtils:
             return self.do_sync_op("POST", url, params, data)
         raise RuntimeError("Class not initialized. Call the class constructor first.")
 
+    #####################
+    # PATCH:
     def patch(self, endpoint: str, params: Optional[dict] = None, data: Any = None
               ) -> Any | Coroutine[Any, Any, Any]:
         """Send PATCH request to specified endpoint.
@@ -410,7 +412,9 @@ class HTTPUtils:
             return self.do_sync_op("PATCH", url, params, data)
         raise RuntimeError("Class not initialized. Call the class constructor first.")
 
-    def delete(self, endpoint: str, params: Optional[dict] = None
+    #####################
+    # DELETE:
+    def delete(self, endpoint: str, params: Optional[dict] = None, data: Any = None
                ) -> Any | Coroutine[Any, Any, Any]:
         """Send DELETE request to specified endpoint.
 
@@ -428,6 +432,6 @@ class HTTPUtils:
         _log_message(self._logger, DEBUG, f"Starting DELETE request to {url}")
         if self._async is not None:
             if self._async:
-                return self.do_async_op("DELETE", url, params)
-            return self.do_sync_op("DELETE", url, params)
+                return self.do_async_op("DELETE", url, params, data)
+            return self.do_sync_op("DELETE", url, params, data)
         raise RuntimeError("Class not initialized. Call the class constructor first.")
