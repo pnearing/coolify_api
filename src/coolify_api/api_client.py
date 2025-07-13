@@ -44,20 +44,20 @@ class CoolifyAPIClient:
 
     Args:
         base_url (str, optional): Base URL for the Coolify API. 
-            Defaults to COOLIFY_BASE_URL env var or https://app.coolify.io
+            Defaults to COOLIFY_API_URL env var or https://app.coolify.io
         api_key (str, optional): API key for authentication. 
             Defaults to COOLIFY_API_KEY env var
     """
 
     _logger = logging.getLogger(__name__)
-    COOLIFY_BASE_URL = os.getenv("COOLIFY_BASE_URL", "https://app.coolify.io")
+    COOLIFY_API_URL = os.getenv("COOLIFY_API_URL", "https://app.coolify.io")
     COOLIFY_API_KEY = os.getenv("COOLIFY_API_KEY")
 
-    def __init__(self, base_url: str = COOLIFY_BASE_URL, api_key: str = COOLIFY_API_KEY):
+    def __init__(self, api_url: str = COOLIFY_API_URL, api_key: str = COOLIFY_API_KEY):
         """Initialize the Coolify API client.
 
         Args:
-            base_url: Base URL for the Coolify API
+            api_url: Base URL for the Coolify API
             api_key: API key for authentication
 
         Raises:
@@ -70,7 +70,7 @@ class CoolifyAPIClient:
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json"
         }
-        http_tools: HTTPUtils = HTTPUtils(base_url, headers)
+        http_tools: HTTPUtils = HTTPUtils(api_url, headers)
 
         self.applications: CoolifyApplications = CoolifyApplications(http_tools)
         """Client for working with the applications API."""
