@@ -117,9 +117,6 @@ class HTTPUtils:
         if async_mode is not None:
             self._async = async_mode
         
-        if self._async:
-            self._session = aiohttp.ClientSession(headers=self._headers)
-            
 
     @classmethod
     async def _a_rate_limit(cls) -> bool:
@@ -141,6 +138,7 @@ class HTTPUtils:
             _log_message(cls._logger, WARNING, message)
             await asyncio.sleep(sleep_time)
         return limited
+
 
     @classmethod
     def _s_rate_limit(cls) -> bool:
@@ -220,6 +218,7 @@ class HTTPUtils:
             raise error_to_raise from None
         return return_value
     
+
     @classmethod
     def _handle_response_sync(cls,
                          http_method: str,
@@ -291,6 +290,7 @@ class HTTPUtils:
             raise error_to_raise from None
         return return_value
 
+
     def do_sync_op(self, op: str, url: str, params: Optional[dict[str, str]] = None,
                    data: Any = None) -> Any:
         """Execute a synchronous HTTP operation.
@@ -318,6 +318,7 @@ class HTTPUtils:
         _log_message(self._logger, DEBUG, f"Finished {op} request to {url}")
         return self._handle_response_sync(op, params, self._headers, data, response)
 
+
     async def do_async_op(self, op: str, url: str, params: Optional[dict[str, str]] = None,
                           data: Any = None) -> Any:
         """Execute an asynchronous HTTP operation.
@@ -334,6 +335,9 @@ class HTTPUtils:
         Raises:
             ClientError: If request fails
         """
+        if self._session is None:
+            self._session = aiohttp.ClientSession(headers=self._headers)
+        
         _log_message(self._logger, DEBUG, f"Starting {op} request to {url}")
         await self._a_rate_limit()
         try:
