@@ -91,7 +91,7 @@ class HTTPUtils:
     _logger = getLogger(__name__)
     _async = None
 
-    def __init__(self, base_url: str, headers: dict[str, str]) -> None:
+    def __init__(self, base_url: str, headers: dict[str, str], async_mode: bool = None) -> None:
         """Initialize HTTP utilities with base URL and headers.
 
         Automatically detects whether to use async or sync mode based on the current
@@ -100,7 +100,8 @@ class HTTPUtils:
         Args:
             base_url: Base URL for API requests
             headers: Headers to include in all requests
-        """
+            async_mode: Whether to use async mode
+    """
         self._base_url = base_url
         """Base URL for the class."""
         self._headers = headers
@@ -110,9 +111,15 @@ class HTTPUtils:
         try:
             asyncio.get_running_loop()
             self._async = True
-            self._session = aiohttp.ClientSession(headers=self._headers)
         except RuntimeError:
             self._async = False
+        
+        if async_mode is not None:
+            self._async = async_mode
+        
+        if self._async:
+            self._session = aiohttp.ClientSession(headers=self._headers)
+            
 
     @classmethod
     async def _a_rate_limit(cls) -> bool:
@@ -131,7 +138,7 @@ class HTTPUtils:
             limited = True
             sleep_time = interval - (current_time - cls._last_request_time)
             message = f"Rate limiting applied. Sleeping for {sleep_time} seconds."
-            _log_message(cls._logger, INFO, message)
+            _log_message(cls._logger, WARNING, message)
             await asyncio.sleep(sleep_time)
         return limited
 
@@ -152,7 +159,7 @@ class HTTPUtils:
             limited = True
             sleep_time = interval - (current_time - cls._last_request_time)
             message = f"Rate limiting applied. Sleeping for {sleep_time} seconds."
-            _log_message(cls._logger, INFO, message)
+            _log_message(cls._logger, WARNING, message)
             time.sleep(sleep_time)
         return limited
 

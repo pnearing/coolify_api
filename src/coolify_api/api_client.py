@@ -9,6 +9,7 @@ Environment Variables:
 """
 import os
 import logging
+from typing import Optional
 
 from ._http_utils import HTTPUtils
 from .applications import CoolifyApplications
@@ -53,7 +54,7 @@ class CoolifyAPIClient:
     COOLIFY_API_URL = os.getenv("COOLIFY_API_URL", "https://app.coolify.io")
     COOLIFY_API_KEY = os.getenv("COOLIFY_API_KEY")
 
-    def __init__(self, api_url: str = COOLIFY_API_URL, api_key: str = COOLIFY_API_KEY):
+    def __init__(self, api_url: str = COOLIFY_API_URL, api_key: str = COOLIFY_API_KEY, async_mode: Optional[bool] = None):
         """Initialize the Coolify API client.
 
         Args:
@@ -70,7 +71,7 @@ class CoolifyAPIClient:
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json"
         }
-        http_tools: HTTPUtils = HTTPUtils(api_url, headers)
+        http_tools: HTTPUtils = HTTPUtils(api_url, headers, async_mode)
 
         self.applications: CoolifyApplications = CoolifyApplications(http_tools)
         """Client for working with the applications API."""
