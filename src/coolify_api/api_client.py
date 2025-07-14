@@ -44,22 +44,26 @@ class CoolifyAPIClient:
         teams (CoolifyTeams): Client for teams API endpoints
 
     Args:
-        base_url (str, optional): Base URL for the Coolify API. 
+        base_url (Optional[str]): Base URL for the Coolify API. 
             Defaults to COOLIFY_API_URL env var or https://app.coolify.io
-        api_key (str, optional): API key for authentication. 
+        api_key (Optional[str]): API key for authentication. 
             Defaults to COOLIFY_API_KEY env var
+        async_mode (Optional[bool]): Whether to use async mode. 
+            Defaults to None (auto-detect based on current execution context)
     """
 
     _logger = logging.getLogger(__name__)
     COOLIFY_API_URL = os.getenv("COOLIFY_API_URL", "https://app.coolify.io")
     COOLIFY_API_KEY = os.getenv("COOLIFY_API_KEY")
 
-    def __init__(self, api_url: str = COOLIFY_API_URL, api_key: str = COOLIFY_API_KEY, async_mode: Optional[bool] = None):
+    def __init__(self, api_url: Optional[str] = COOLIFY_API_URL, api_key: Optional[str] = COOLIFY_API_KEY, async_mode: Optional[bool] = None):
         """Initialize the Coolify API client.
 
         Args:
-            api_url: Base URL for the Coolify API
-            api_key: API key for authentication
+            api_url (Optional[str]): Base URL for the Coolify API
+            api_key (Optional[str]): API key for authentication
+            async_mode (Optional[bool]): Whether to use async mode, defaults to None (auto-detect based on 
+                current execution context)
 
         Raises:
             ValueError: If api_key is not provided either as argument or environment variable
