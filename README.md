@@ -1,23 +1,98 @@
-# Coolify API
+# Coolify API Python Client
 
-## This is my implementation of the Coolify api
+## Overview
 
-The `CoolifyAPIClient` is a Python class defined in the `api_client.py` module of the `coolify_api` package. It serves as the main interface between the user and the Coolify API, providing organized access to various features of the API. The class uses an API key and base URL, typically fed from environment variables, to handle authentication with the API.
+This library provides a comprehensive Python client for interacting with the [Coolify](https://coolify.io) API. It allows you to manage applications, databases, services, deployments, projects, servers, teams, resources, and more, all via Python code. The client supports both synchronous and asynchronous usage and is designed for seamless integration with Coolify's API endpoints.
 
-Upon initialization, it creates instances of multiple specialized classes, each corresponding to a different aspect of the Coolify API. Through these instances, users gain access to interactions with applications, databases, deployments, operations, private keys, projects, resources, servers, services, and teams. It essentially provides an organized set of handles to manage different components through the Coolify API, structuring the overall interaction with the API for ease of use and clarity.
+## Features
 
-The `CoolifyAPIClient` class provides an effective way to interact with the Coolify API. It handles the API key and base URL and provides Pythonic methods corresponding to various Coolify API endpoints.
-Here is how you could instantiate the `CoolifyAPIClient` class and use its methods:
+- **Applications:** List, create, update, start, stop, restart, and manage environment variables for Coolify applications.
+- **Databases:** List, create, update, start, stop, restart, and delete databases. Supports configuration for various database types.
+- **Services:** Manage lifecycle (create, update, start, stop, restart, delete) and environment variables for services.
+- **Deployments:** List deployments, get deployment details, and trigger deployments by UUID or tag.
+- **Projects:** Create, update, delete, and list projects, and manage project environments.
+- **Environments:** Manage environment variables for applications and services (list, create, update, delete).
+- **Servers, Teams, Resources, Private Keys, Operations:** Full API coverage for these Coolify resources.
+- **Async and Sync:** Automatically detects and supports both async and sync usage.
+- **Error Handling:** Rich exceptions for authentication, validation, and API errors.
+- **Rate Limiting:** Handles API rate limits for robust automation.
 
-```python
-# Import the CoolifyAPIClient
-from coolify_api import CoolifyAPIClient
-# Instantiate the class using appropriate credentials
-api_client = CoolifyAPIClient(base_url='<your_coolify_base_url>', api_key='<your_coolify_api_key>')
-# Use the instance's methods corresponding to different aspects of the Coolify API
-response = api_client.applications.list_all()  # response is a list[dict[str, Any]].
+## Installation
+
+Install the dependencies (see `requirements.txt`):
+
+```bash
+pip install -r requirements.txt
 ```
 
-**Note:** Replace `'<your_coolify_base_url>'` and `'<your_coolify_api_key>'` with the actual base URL and API key for your Coolify application.
-Please refer to the specific documentation for the methods available under each instance variable (like `applications`, `databases`, etc.) in the `CoolifyAPIClient` class. The exact methods and their usage will depend on the corresponding classes (`CoolifyApplications`, `CoolifyDatabases`, etc.).
-_Disclaimer:_ The above code is just an example, and the actual usage might differ depending on the methods available in the `CoolifyAPIClient` class. Always refer to the official Coolify API documentation and `CoolifyAPIClient` class documentation for accurate information.
+You can also add this library to your project as a module.
+
+## Usage
+
+### Basic Example
+
+```python
+from coolify_api import CoolifyAPIClient
+
+# You can set COOLIFY_API_KEY and COOLIFY_API_URL as environment variables, or pass them directly
+client = CoolifyAPIClient(api_key="your_api_key")
+
+# List all applications
+apps = client.applications.list_all()
+
+# Get details for a specific application
+app = client.applications.get("app-uuid")
+
+# Start an application
+deploy_result = client.applications.start("app-uuid")
+
+# Manage environment variables
+env_var = client.applications.environment.create("app-uuid", {"key": "DATABASE_URL", "value": "postgresql://..."})
+
+# List all databases
+databases = client.databases.list_all()
+
+# Create a new project
+project = client.projects.create({"name": "My Project", "description": "Project description"})
+```
+
+### Async Usage:
+
+The async_mode parameter is optional and defaults to None, it acts as an override for the async detection logic.  If set to True, the client will always use async mode, and if set to False, the client will always use sync mode. If set to None, the client will automatically detect the mode based on the runtime environment, this detection is done at the time of the call, as such it is possible to use both async and sync mode in the same script.
+
+```python
+import asyncio
+from coolify_api import CoolifyAPIClient
+
+async def main():
+    client = CoolifyAPIClient(api_key="your_api_key", async_mode=True)
+    apps = await client.applications.list_all()
+    print(apps)
+
+asyncio.run(main())
+```
+
+## Environment Variables
+
+- `COOLIFY_API_KEY`: Your Coolify API key (required)
+- `COOLIFY_API_URL`: Base URL for the Coolify instance (default: `https://app.coolify.io`)
+- `REQUESTS_PER_SECOND`: (optional) Set API rate limit (default: 3.3)
+- `REQUESTS_TIMEOUT`: (optional) Request timeout in seconds (default: 10)
+
+## Project Structure
+
+- `src/coolify_api/`: Main source code
+    - `api_client.py`: Main entry point client
+    - `applications.py`, `databases.py`, `deployments.py`, `services.py`, `projects.py`, etc.: Resource-specific clients
+    - `environments.py`: Environment variable management
+    - `_http_utils.py`: HTTP and async utilities
+    - `_logging.py`, `exceptions.py`: Logging and error handling
+- `requirements.txt`: Python dependencies
+
+## Contributing
+
+Contributions are welcome! Please open issues or submit pull requests for improvements or bug fixes.
+
+## License
+
+This project is licensed under the MIT License.
