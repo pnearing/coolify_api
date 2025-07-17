@@ -4,7 +4,7 @@ This module provides the main client class for interacting with various Coolify 
 It handles authentication and provides access to different API resources through dedicated classes.
 
 Environment Variables:
-    COOLIFY_BASE_URL: Base URL for the Coolify API (default: https://app.coolify.io)
+    COOLIFY_API_URL: Base URL for the Coolify API (default: https://app.coolify.io)
     COOLIFY_API_KEY: API key for authentication
 """
 import os
@@ -44,12 +44,14 @@ class CoolifyAPIClient:
         teams (CoolifyTeams): Client for teams API endpoints
 
     Args:
-        base_url (Optional[str]): Base URL for the Coolify API. 
+        api_url (Optional[str]): Base URL for the Coolify API. 
             Defaults to COOLIFY_API_URL env var or https://app.coolify.io
         api_key (Optional[str]): API key for authentication. 
             Defaults to COOLIFY_API_KEY env var
-        async_mode (Optional[bool]): Whether to use async mode. 
+        async_mode (Optional[bool]): Overrides the async detection logic.
             Defaults to None (auto-detect based on current execution context)
+            If set to True, the client will always use async mode, and if set to False,
+            the client will always use sync mode.
     """
 
     _logger = logging.getLogger(__name__)
@@ -60,10 +62,14 @@ class CoolifyAPIClient:
         """Initialize the Coolify API client.
 
         Args:
-            api_url (Optional[str]): Base URL for the Coolify API
-            api_key (Optional[str]): API key for authentication
-            async_mode (Optional[bool]): Whether to use async mode, defaults to None (auto-detect based on 
-                current execution context)
+            api_url (Optional[str]): Base URL for the Coolify API.
+                Defaults to COOLIFY_API_URL env var or https://app.coolify.io
+            api_key (Optional[str]): API key for authentication.
+                Defaults to COOLIFY_API_KEY env var
+            async_mode (Optional[bool]): Overrides the async detection logic.
+                Defaults to None (auto-detect based on current execution context)
+                If set to True, the client will always use async mode, and if set to False,
+                the client will always use sync mode.
 
         Raises:
             ValueError: If api_key is not provided either as argument or environment variable
