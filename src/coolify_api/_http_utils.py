@@ -89,9 +89,8 @@ class HTTPUtils:
     _timeout: int = int(os.getenv("REQUESTS_TIMEOUT", "10"))
     _last_request_time: float = time.time() - 1
     _logger = getLogger(__name__)
-    _async = None
 
-    def __init__(self, base_url: str, headers: dict[str, str], async_mode: bool = None) -> None:
+    def __init__(self, base_url: str, headers: dict[str, str], async_mode: Optional[bool] = None) -> None:
         """Initialize HTTP utilities with base URL and headers.
 
         Automatically detects whether to use async or sync mode based on the current
@@ -108,15 +107,21 @@ class HTTPUtils:
         """Headers for the class."""
         self._session: Optional[aiohttp.ClientSession] = None
         """Asyncio session for making HTTP requests."""
+        self._override_async_mode: Optional[bool] = async_mode
+        
+    def detect_async_mode(self) -> bool:
+        """Detect whether to use async or sync mode based on the current execution context."""
         try:
             asyncio.get_running_loop()
-            self._async = True
+            return True
         except RuntimeError:
-            self._async = False
-        
-        if async_mode is not None:
-            self._async = async_mode
-        
+            return False
+
+    @property
+    def _do_async(self) -> bool:
+        if self._override_async_mode is not None:
+            return self._override_async_mode
+        return self.detect_async_mode()
 
     @classmethod
     async def _a_rate_limit(cls) -> bool:
@@ -349,6 +354,7 @@ class HTTPUtils:
             _log_message(self._logger, ERROR,f"Error sending {op} request to {url}: {exc}")
             raise exc
 
+
     ##############
     # GET:
     def get(self, endpoint: str, params: Optional[dict[str, str]] = None
@@ -367,11 +373,9 @@ class HTTPUtils:
         """
         url = _build_url(self._base_url, endpoint)
         _log_message(self._logger, DEBUG, f"Starting GET request to {url}")
-        if self._async is not None:
-            if self._async:
-                return self.do_async_op("GET", url, params)
-            return self.do_sync_op("GET", url, params)
-        raise RuntimeError("Class not initialized. Call the class constructor first.")
+        if self._do_async:
+            return self.do_async_op("GET", url, params)
+        return self.do_sync_op("GET", url, params)
 
     #####################
     # POST:
@@ -392,11 +396,9 @@ class HTTPUtils:
         """
         url = _build_url(self._base_url, endpoint)
         _log_message(self._logger, DEBUG, f"Starting POST request to {url}")
-        if self._async is not None:
-            if self._async:
-                return self.do_async_op("POST", url, params, data)
-            return self.do_sync_op("POST", url, params, data)
-        raise RuntimeError("Class not initialized. Call the class constructor first.")
+        if self._do_async:
+            return self.do_async_op("POST", url, params, data)
+        return self.do_sync_op("POST", url, params, data)
 
     #####################
     # PATCH:
@@ -417,11 +419,9 @@ class HTTPUtils:
         """
         url = _build_url(self._base_url, endpoint)
         _log_message(self._logger, DEBUG, f"Starting PATCH request to {url}")
-        if self._async is not None:
-            if self._async:
-                return self.do_async_op("PATCH", url, params, data)
-            return self.do_sync_op("PATCH", url, params, data)
-        raise RuntimeError("Class not initialized. Call the class constructor first.")
+        if self._do_async:
+            return self.do_async_op("PATCH", url, params, data)
+        return self.do_sync_op("PATCH", url, params, data)
 
     #####################
     # DELETE:
@@ -441,8 +441,6 @@ class HTTPUtils:
         """
         url = _build_url(self._base_url, endpoint)
         _log_message(self._logger, DEBUG, f"Starting DELETE request to {url}")
-        if self._async is not None:
-            if self._async:
-                return self.do_async_op("DELETE", url, params, data)
-            return self.do_sync_op("DELETE", url, params, data)
-        raise RuntimeError("Class not initialized. Call the class constructor first.")
+        if self._do_async:
+            return self.do_async_op("DELETE", url, params, data)
+        return self.do_sync_op("DELETE", url, params, data)
