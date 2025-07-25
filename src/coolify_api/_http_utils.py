@@ -26,7 +26,7 @@ from requests.models import Response
 
 from ._logging import _log_message
 from .exceptions import CoolifyError, CoolifyNotFoundError, CoolifyPermissionError, \
-    CoolifyValidationError, CoolifyAuthenticationError
+    CoolifyValidationError, CoolifyAuthenticationError, CoolifyRateLimitError
 
 
 ######################
