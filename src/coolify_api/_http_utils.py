@@ -209,7 +209,8 @@ class HTTPUtils:
                 _log_message(cls._logger, DEBUG, error_message)
                 error_to_raise = CoolifyError(error_message, response=response, data=data)
         else:
-            error_message = f"Unhandled >= 500 error: {status_code} - {response.text}"
+            error_message = f"Unhandled server error >= 500: {status_code} - {response.text}"
+            _log_message(cls._logger, ERROR, error_message)
             error_to_raise = CoolifyError(error_message, response=response)
 
         # Log and raise / return:
