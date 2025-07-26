@@ -348,6 +348,7 @@ class HTTPUtils:
         
         _log_message(self._logger, DEBUG, f"Starting async {op} request to {url}")
         await self._a_rate_limit()
+        _log_message(self._logger, DEBUG, f"Rate limit applied for async {op} request to {url}")
         try:
             async with self._session.request(op, url, params=params, headers=self._headers,
                                              json=data) as response:
@@ -356,7 +357,9 @@ class HTTPUtils:
         except ClientError as exc:
             _log_message(self._logger, ERROR, f"Error sending async {op} request to {url}: {exc}")
             raise exc
-
+        except Exception as e:
+            _log_message(self._logger, ERROR, f"Unexpected error sending async {op} request to {url}: {e}")
+            raise e
 
     ##############
     # GET:
