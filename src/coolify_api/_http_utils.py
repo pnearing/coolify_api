@@ -175,6 +175,8 @@ class HTTPUtils:
                                     data: Optional[Any],
                                     response: ClientResponse,
                                     ) -> Any:
+        _log_message(cls._logger, DEBUG, f"Starting to handle async response for {http_method} request to {response.url}")
+        
         # Gather the data:
         status_code = response.status
         log_level: int = ERROR
@@ -344,15 +346,15 @@ class HTTPUtils:
         if self._session is None:
             self._session = aiohttp.ClientSession(headers=self._headers)
         
-        _log_message(self._logger, DEBUG, f"Starting {op} request to {url}")
+        _log_message(self._logger, DEBUG, f"Starting async {op} request to {url}")
         await self._a_rate_limit()
         try:
             async with self._session.request(op, url, params=params, headers=self._headers,
                                              json=data) as response:
-                _log_message(self._logger, DEBUG, f"Finished {op} request to {url}")
+                _log_message(self._logger, DEBUG, f"Finished async {op} request to {url}")
                 return await self._handle_response_async(op, params, self._headers, None, response)
         except ClientError as exc:
-            _log_message(self._logger, ERROR,f"Error sending {op} request to {url}: {exc}")
+            _log_message(self._logger, ERROR, f"Error sending async {op} request to {url}: {exc}")
             raise exc
 
 
