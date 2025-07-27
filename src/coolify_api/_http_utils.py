@@ -343,23 +343,28 @@ class HTTPUtils:
         Raises:
             ClientError: If request fails
         """
-        if self._session is None:
-            self._session = aiohttp.ClientSession(headers=self._headers)
+        # Create a new session for each request to avoid "Event loop is closed" errors
+        # This is safer than reusing sessions across different event loops
+        session = aiohttp.ClientSession(headers=self._headers)
         
         _log_message(self._logger, DEBUG, f"Starting async {op} request to {url}")
         await self._a_rate_limit()
         _log_message(self._logger, DEBUG, f"Rate limit applied for async {op} request to {url}")
         try:
-            async with self._session.request(op, url, params=params, headers=self._headers,
-                                             json=data) as response:
+            async with session.request(op, url, params=params, headers=self._headers,
+                                      json=data) as response:
                 _log_message(self._logger, DEBUG, f"Finished async {op} request to {url}")
-                return await self._handle_response_async(op, params, self._headers, None, response)
+                result = await self._handle_response_async(op, params, self._headers, data, response)
+                return result
         except ClientError as exc:
             _log_message(self._logger, ERROR, f"Error sending async {op} request to {url}: {exc}")
             raise exc
         except Exception as e:
             _log_message(self._logger, ERROR, f"Unexpected error sending async {op} request to {url}: {e}")
             raise e
+        finally:
+            # Always close the session when done
+            await session.close()
 
     ##############
     # GET:
