@@ -17,7 +17,7 @@ import asyncio
 from logging import getLogger, DEBUG, INFO, WARNING, ERROR
 import os
 import time
-from typing import Any, Optional, Coroutine
+from typing import Any, NoReturn, Optional, Coroutine, Tuple
 
 import aiohttp
 from aiohttp import ClientResponse, ClientError
@@ -105,11 +105,10 @@ class HTTPUtils:
         """Base URL for the class."""
         self._headers = headers
         """Headers for the class."""
-        self._session: Optional[aiohttp.ClientSession] = None
-        """Asyncio session for making HTTP requests."""
         self._override_async_mode: Optional[bool] = async_mode
+        """Override async mode."""
         
-    def detect_async_mode(self) -> bool:
+    def _detect_async_mode(self) -> bool:
         """Detect whether to use async or sync mode based on the current execution context."""
         try:
             asyncio.get_running_loop()
@@ -119,9 +118,10 @@ class HTTPUtils:
 
     @property
     def _do_async(self) -> bool:
+        """Whether to use async mode."""
         if self._override_async_mode is not None:
             return self._override_async_mode
-        return self.detect_async_mode()
+        return self._detect_async_mode()
 
     @classmethod
     async def _a_rate_limit(cls) -> bool:
@@ -166,7 +166,43 @@ class HTTPUtils:
             time.sleep(sleep_time)
         return limited
 
-    
+    @classmethod # REDIRECTS:
+    def _handle_300_response(cls, response: ClientResponse | Response) -> Exception:
+        return CoolifyError(f"Unhandled 3xx error: {response.status} - we shouldn't be redirecting.")
+
+    @classmethod # CLIENT ERRORS:
+    def _handle_400_response(cls, response: ClientResponse | Response, status_code: int, headers: dict, data: Optional[Any]) -> Exception:
+        # NEVER SEEN: 400
+        if status_code == 401:
+            return CoolifyAuthenticationError(response=response, headers=headers)
+        elif status_code == 403:
+            return CoolifyPermissionError(response=response, headers=headers)
+        elif status_code == 404:
+            return CoolifyNotFoundError(response=response, headers=headers)
+        elif status_code == 422:
+            try:
+                return CoolifyValidationError.from_response_async(response=response, data=data)
+            except Exception:
+                return CoolifyValidationError.from_response_sync(response=response, data=data)
+        elif status_code == 429:
+            return CoolifyRateLimitError(response=response, headers=headers)
+        else:
+            return CoolifyError(f"Unhandled 4xx error: {status_code} - please report this to maintainer.")
+
+    @classmethod # SERVER ERRORS:
+    def _handle_500_response(cls, response: ClientResponse) -> Exception:
+        return CoolifyError(f"Unhandled server error >= 500: {response.status}")
+
+    @classmethod # ALL RESPONSES:
+    def _handle_http_status_code(cls, status_code: int, response: ClientResponse | Response, headers: dict, data: Optional[Any]) -> Exception:
+        if status_code < 300 or status_code >= 400:
+            return cls._handle_300_response(response)
+        elif status_code < 400 or status_code >= 500:
+            return cls._handle_400_response(response, status_code, headers, data)
+        else:
+            return cls._handle_500_response(response)
+
+
     @classmethod
     async def _handle_response_async(cls,
                                     http_method: str,
@@ -175,66 +211,6 @@ class HTTPUtils:
                                     data: Optional[Any],
                                     response: ClientResponse,
                                     ) -> Any:
-        _log_message(cls._logger, DEBUG, f"Starting to handle async response for {http_method} request to {response.url}")
-        
-        # Gather the data:
-        status_code = response.status
-        log_level: int = ERROR
-        return_value: Any = None
-        error_to_raise: Optional[Exception] = None
-
-        if 200 <= status_code < 300:
-            log_level = INFO
-            return_value = await response.json()
-        elif 300 <= status_code < 400:
-            log_level = WARNING
-            error_message = f"Unhandled 3xx error: {status_code} - {response.text} - we shouldn't be redirecting."
-            _log_message(cls._logger, DEBUG, error_message)
-            error_to_raise = CoolifyError(error_message, response=response)
-        elif 400 <= status_code < 500:
-            if status_code == 400:
-                error_message = f"UNSEEN 400 error - {response.text}"
-                _log_message(cls._logger, DEBUG, error_message)
-                error_to_raise = CoolifyError(error_message, response=response, data=data)
-            elif status_code == 401:
-                error_to_raise = CoolifyAuthenticationError(response=response, headers=headers)
-            elif status_code == 403:
-                error_to_raise = CoolifyPermissionError(response=response, headers=headers)
-            elif status_code == 404:
-                error_to_raise = CoolifyNotFoundError(response=response, headers=headers)
-            elif status_code == 422:
-                error_to_raise = await CoolifyValidationError.from_response_async(response=response, data=data)
-            elif status_code == 429:
-                error_to_raise = CoolifyRateLimitError(response=response, headers=headers)
-            else:
-                error_message = f"Unhandled 4xx error: {status_code} - {response.text} - please report this to maintainer."
-                _log_message(cls._logger, DEBUG, error_message)
-                error_to_raise = CoolifyError(error_message, response=response, data=data)
-        else:
-            error_message = f"Unhandled server error >= 500: {status_code} - {response.text}"
-            _log_message(cls._logger, ERROR, error_message)
-            error_to_raise = CoolifyError(error_message, response=response)
-
-        # Log and raise / return:
-        message: str = (f"CoolifyAPI: '{http_method}' operation on '{response.url}', "
-                        f"with params: '{params}', responded with Status Code: '{status_code}:'")
-        hidden_message: str = f"\n  Sent headers: {headers}\n"
-        if data:
-            hidden_message += f"  Sent data: {data}\n"
-        _log_message(cls._logger, log_level, message, hidden_message)
-        if error_to_raise:
-            raise error_to_raise from None
-        return return_value
-    
-
-    @classmethod
-    def _handle_response_sync(cls,
-                         http_method: str,
-                         params: Optional[dict[str, str]],
-                         headers: dict,
-                         data: Optional[Any],
-                         response: Response,
-                         ) -> Any:
         """Process HTTP response and handle any errors.
 
         Args:
@@ -245,94 +221,91 @@ class HTTPUtils:
             response: Response from server
 
         Returns:
-            Processed response data (usually JSON)
+            Processed response data (usually JSON) if request was successful,
+            otherwise raises an appropriate exception class.
+        """
+        _log_message(cls._logger, DEBUG, f"Starting to handle async response for {http_method} request to {response.url}")
+        
+        # Gather the data:
+        status_code = response.status
+        # Handle a successful response:
+        if 200 <= status_code < 300:
+            _log_message(cls._logger, INFO, f"{http_method} request to {response.url} using params {params} succeeded with status code {status_code}", "\n  Sent headers: {headers}\n")
+            return await response.json()
+        # Handle a failed response:
+        error_to_raise = cls._handle_http_status_code(status_code, response, headers, data)
+        _log_message(cls._logger, ERROR, f"{http_method} request to {response.url} using params {params} failed with status code {status_code}", "\n  Sent headers: {headers}\n")
+        raise error_to_raise from None
+   
 
-        Raises:
-            CoolifyError: For general API errors
-            CoolifyAuthenticationError: For authentication failures
-            CoolifyValidationError: For validation errors
+    @classmethod
+    def _handle_response_sync(cls,
+                         http_method: str,
+                         params: Optional[dict[str, str]],
+                         headers: dict,
+                         data: Optional[Any],
+                         response: Response,
+                         ) -> Any | NoReturn:
+        """Process HTTP response and handle any errors.
+
+        Args:
+            http_method: HTTP method used (GET, POST, etc.)
+            params: Query parameters sent with request
+            headers: Headers sent with request
+            data: Request body data
+            response: Response from server
+
+        Returns:
+            Processed response data (JSON) if request was successful,
+            otherwise raises an appropriate exception class.
         """
         # Gather the data:
         status_code = response.status_code
-        log_level: int = ERROR
-        return_value: Any = None
-        error_to_raise: Optional[Exception] = None
-
+        # Handle a successful response:
         if 200 <= status_code < 300:
-            log_level = INFO
-            return_value = response.json()
-        elif 300 <= status_code < 400:
-            log_level = WARNING
-            error_message = f"Unhandled 3xx error: {status_code} - {response.text} - we shouldn't be redirecting."
-            _log_message(cls._logger, DEBUG, error_message)
-            error_to_raise = CoolifyError(error_message, response=response)
-        elif 400 <= status_code < 500:
-            if status_code == 400:
-                error_message = f"UNSEEN 400 error - {response.text}"
-                _log_message(cls._logger, DEBUG, error_message)
-                error_to_raise = CoolifyError(error_message, response=response, data=data)
-            elif status_code == 401:
-                error_to_raise = CoolifyAuthenticationError(response=response, headers=headers)
-            elif status_code == 403:
-                error_to_raise = CoolifyPermissionError(response=response, headers=headers)
-            elif status_code == 404:
-                error_to_raise = CoolifyNotFoundError(response=response, headers=headers)
-            elif status_code == 422:
-                error_to_raise = CoolifyValidationError.from_response_sync(response=response, data=data)
-            else:
-                error_message = f"Unhandled 4xx error: {status_code} - {response.text} - please report this to maintainer."
-                _log_message(cls._logger, DEBUG, error_message)
-                error_to_raise = CoolifyError(error_message, response=response, data=data)
-        else:
-            error_message = f"Unhandled >= 500 error: {status_code} - {response.text}"
-            error_to_raise = CoolifyError(error_message, response=response)
+            _log_message(cls._logger, INFO, f"{http_method} request to {response.url} using params {params} succeeded with status code {status_code}", "\n  Sent headers: {headers}\n")
+            return response.json()
+        # Handle a failed response:
+        error_to_raise = cls._handle_http_status_code(status_code, response, headers, data)
+        _log_message(cls._logger, ERROR, f"{http_method} request to {response.url} using params {params} failed with status code {status_code}", "\n  Sent headers: {headers}\n")
+        raise error_to_raise from None
 
-        # Log and raise / return:
-        message: str = (f"CoolifyAPI: '{http_method}' operation on '{response.url}', "
-                        f"with params: '{params}', responded with Status Code: '{status_code}:'")
-        hidden_message: str = f"\n  Sent headers: {headers}\n"
-        if data:
-            hidden_message += f"  Sent data: {data}\n"
-        _log_message(cls._logger, log_level, message, hidden_message)
-        if error_to_raise:
-            raise error_to_raise from None
-        return return_value
-
-
-    def do_sync_op(self, op: str, url: str, params: Optional[dict[str, str]] = None,
-                   data: Any = None) -> Any:
+    def do_sync_op(self, http_method: str, url: str, params: Optional[dict[str, str]] = None,
+                   data: Any = None) -> Any | NoReturn:
         """Execute a synchronous HTTP operation.
 
         Args:
-            op: HTTP method to use
+            http_method: HTTP method to use
             url: URL to send request to
             params: Optional query parameters
             data: Optional request body
 
         Returns:
-            Processed response data
-
-        Raises:
-            requests.RequestException: If request fails
+            Processed response data (JSON) if request was successful,
+            otherwise raises an appropriate exception class.
         """
-        _log_message(self._logger, DEBUG, f"Starting {op} request to {url}")
+        _log_message(self._logger, DEBUG, f"Starting {http_method} request to {url} with params {params}", "\n  Sent headers: {self._headers}\n")
+        # Apply rate limit:
+        self._s_rate_limit()
+        _log_message(self._logger, DEBUG, f"Rate limit applied for sync {http_method} request to {url}")
+        # Send the request:
         try:
-            self._s_rate_limit()
-            response = requests.request(op, url, params=params, headers=self._headers, json=data,
+            response: Response = requests.request(http_method, url, params=params, headers=self._headers, json=data,
                                         timeout=self._timeout)
+            _log_message(self._logger, DEBUG, f"Finished {http_method} request to {url} with params {params}", "\n  Sent headers: {self._headers}\n")
         except requests.RequestException as e:
-            _log_message(self._logger, ERROR, f"Error sending {op} request to {url}: {e}")
+            _log_message(self._logger, ERROR, f"Error sending {http_method} request to {url} with params {params}: {e}", "\n  Sent headers: {self._headers}\n")
             raise e
-        _log_message(self._logger, DEBUG, f"Finished {op} request to {url}")
-        return self._handle_response_sync(op, params, self._headers, data, response)
+        # Return the response:
+        return self._handle_response_sync(http_method, params, self._headers, data, response)
 
 
-    async def do_async_op(self, op: str, url: str, params: Optional[dict[str, str]] = None,
+    async def do_async_op(self, http_method: str, url: str, params: Optional[dict[str, str]] = None,
                           data: Any = None) -> Any:
         """Execute an asynchronous HTTP operation.
 
         Args:
-            op: HTTP method to use
+            http_method: HTTP method to use
             url: URL to send request to
             params: Optional query parameters
             data: Optional request body
@@ -343,28 +316,30 @@ class HTTPUtils:
         Raises:
             ClientError: If request fails
         """
+        _log_message(self._logger, DEBUG, f"Starting async {http_method} request to {url} with params {params}", "\n  Sent headers: {self._headers}\n")
         # Create a new session for each request to avoid "Event loop is closed" errors
         # This is safer than reusing sessions across different event loops
         session = aiohttp.ClientSession(headers=self._headers)
         
-        _log_message(self._logger, DEBUG, f"Starting async {op} request to {url}")
+        # Apply rate limit:
         await self._a_rate_limit()
-        _log_message(self._logger, DEBUG, f"Rate limit applied for async {op} request to {url}")
+        _log_message(self._logger, DEBUG, f"Rate limit applied for async {http_method} request to {url}")
+
+        # Send the request:
         try:
-            async with session.request(op, url, params=params, headers=self._headers,
+            async with session.request(http_method, url, params=params, headers=self._headers,
                                       json=data) as response:
-                _log_message(self._logger, DEBUG, f"Finished async {op} request to {url}")
-                result = await self._handle_response_async(op, params, self._headers, data, response)
-                return result
-        except ClientError as exc:
-            _log_message(self._logger, ERROR, f"Error sending async {op} request to {url}: {exc}")
-            raise exc
-        except Exception as e:
-            _log_message(self._logger, ERROR, f"Unexpected error sending async {op} request to {url}: {e}")
+                _log_message(self._logger, DEBUG, f"Finished async {http_method} request to {url} with params {params}", "\n  Sent headers: {self._headers}\n")
+                result = await self._handle_response_async(http_method, params, self._headers, data, response)
+        except ClientError as e:
+            _log_message(self._logger, ERROR, f"Error sending async {http_method} request to {url} with params {params}: {e}", "\n  Sent headers: {self._headers}\n")
             raise e
         finally:
             # Always close the session when done
             await session.close()
+        # Return the response
+        return result
+
 
     ##############
     # GET:
@@ -383,7 +358,6 @@ class HTTPUtils:
             RuntimeError: If class not properly initialized
         """
         url = _build_url(self._base_url, endpoint)
-        _log_message(self._logger, DEBUG, f"Starting GET request to {url}")
         if self._do_async:
             return self.do_async_op("GET", url, params)
         return self.do_sync_op("GET", url, params)
@@ -406,7 +380,6 @@ class HTTPUtils:
             RuntimeError: If class not properly initialized
         """
         url = _build_url(self._base_url, endpoint)
-        _log_message(self._logger, DEBUG, f"Starting POST request to {url}")
         if self._do_async:
             return self.do_async_op("POST", url, params, data)
         return self.do_sync_op("POST", url, params, data)
@@ -429,7 +402,6 @@ class HTTPUtils:
             RuntimeError: If class not properly initialized
         """
         url = _build_url(self._base_url, endpoint)
-        _log_message(self._logger, DEBUG, f"Starting PATCH request to {url}")
         if self._do_async:
             return self.do_async_op("PATCH", url, params, data)
         return self.do_sync_op("PATCH", url, params, data)
@@ -451,7 +423,6 @@ class HTTPUtils:
             RuntimeError: If class not properly initialized
         """
         url = _build_url(self._base_url, endpoint)
-        _log_message(self._logger, DEBUG, f"Starting DELETE request to {url}")
         if self._do_async:
             return self.do_async_op("DELETE", url, params, data)
         return self.do_sync_op("DELETE", url, params, data)
