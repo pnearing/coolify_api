@@ -124,6 +124,15 @@ class HTTPUtils:
         return self._detect_async_mode()
 
     @classmethod
+    def _calculate_sleep_time(cls, current_time: float, last_request_time: float, requests_per_second: float) -> float:
+        """Calculate the sleep time based on the current time and the last request time."""
+        interval: float = 1 / requests_per_second
+        if current_time - last_request_time < interval:
+            sleep_time = interval - (current_time - last_request_time)
+            return sleep_time
+        return 0
+
+    @classmethod
     async def _a_rate_limit(cls) -> bool:
         """Apply rate limiting for async requests.
 
@@ -135,12 +144,10 @@ class HTTPUtils:
         """
         limited: bool = False
         current_time: float = time.time()
-        interval: float = 1 / cls._requests_per_second
-        if current_time - cls._last_request_time < interval:
+        sleep_time: float = cls._calculate_sleep_time(current_time, cls._last_request_time, cls._requests_per_second)
+        if sleep_time > 0:
             limited = True
-            sleep_time = interval - (current_time - cls._last_request_time)
-            message = f"Rate limiting applied. Sleeping for {sleep_time} seconds."
-            _log_message(cls._logger, WARNING, message)
+            _log_message(cls._logger, WARNING, f"Rate limiting applied. Sleeping for {sleep_time} seconds.")
             await asyncio.sleep(sleep_time)
         return limited
 
@@ -157,12 +164,10 @@ class HTTPUtils:
         """
         limited: bool = False
         current_time: float = time.time()
-        interval: float = 1 / cls._requests_per_second
-        if current_time - cls._last_request_time < interval:
+        sleep_time: float = cls._calculate_sleep_time(current_time, cls._last_request_time, cls._requests_per_second)
+        if sleep_time > 0:
             limited = True
-            sleep_time = interval - (current_time - cls._last_request_time)
-            message = f"Rate limiting applied. Sleeping for {sleep_time} seconds."
-            _log_message(cls._logger, WARNING, message)
+            _log_message(cls._logger, WARNING, f"Rate limiting applied. Sleeping for {sleep_time} seconds.")
             time.sleep(sleep_time)
         return limited
 
